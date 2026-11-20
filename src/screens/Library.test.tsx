@@ -196,4 +196,82 @@ describe('Library', () => {
       expect(screen.queryByText(/Last done/)).not.toBeInTheDocument();
     });
   });
+
+  describe('home page', () => {
+    const day = 86_400_000;
+    const logged = (id: string, workoutId: string, startedAt: number, durationSec = 600) => ({
+      id,
+      workoutId,
+      workoutName: 'x',
+      mode: 'interval' as const,
+      startedAt,
+      durationSec,
+      roundsDone: 1,
+      laps: 0,
+      completed: true,
+    });
+
+    it('greets you and says no sessions yet this week', () => {
+      setup();
+      expect(screen.getByTestId('greeting')).toHaveTextContent(/^Good (morning|afternoon|evening)/);
+      expect(screen.getByTestId('week-summary')).toHaveTextContent('No sessions yet this week');
+    });
+
+    it('summarises the week once you have trained', () => {
+      const [a] = loadLibrary();
+      addSession(logged('1', a.id, Date.now(), 600));
+      setup();
+      expect(screen.getByTestId('week-summary')).toHaveTextContent('1 session this week · 10 min');
+    });
+
+    it('shows this week as seven days, marking trained days and today', () => {
+      const [a] = loadLibrary();
+      addSession(logged('1', a.id, Date.now()));
+      setup();
+      const strip = screen.getByLabelText('This week');
+      const days = within(strip).getAllByRole('img');
+      expect(days).toHaveLength(7);
+      const today = days.filter((d) => /\(today\)/.test(d.getAttribute('aria-label') ?? ''));
+      expect(today).toHaveLength(1);
+      expect(today[0].getAttribute('aria-label')).toMatch(/trained/);
+    });
+
+    it('features your most recently done workout as Up next, with a quick start', async () => {
+      const [a, b] = loadLibrary();
+      addSession(logged('1', a.id, Date.now() - 5 * day));
+      addSession(logged('2', b.id, Date.now() - 1 * day));
+      const { navigate, user } = setup();
+      const hero = screen.getByRole('region', { name: 'Up next' });
+      expect(within(hero).getByText('Full Body B')).toBeInTheDocument();
+      await user.click(within(hero).getByRole('button', { name: 'Quick start Full Body B' }));
+      expect(navigate).toHaveBeenCalledWith({ name: 'run', id: b.id });
+    });
+
+    it('features the first workout when nothing has been done yet', () => {
+      setup();
+      const hero = screen.getByRole('region', { name: 'Up next' });
+      expect(within(hero).getByText('Full Body A')).toBeInTheDocument();
+    });
+
+    it('shows an estimated time for fixed-length workouts only', () => {
+      setup();
+      const card = (name: string) => screen.getByRole('button', { name }).closest('li')!;
+      expect(within(card('Full Body A')).getByText('≈ 10 min')).toBeInTheDocument();
+      expect(within(card('Kettlebell Rounds (Athenian Complex)')).queryByText(/≈/)).not.toBeInTheDocument();
+    });
+
+    it('uses icons rather than emoji or text glyphs', () => {
+      const { container } = render(<Library navigate={vi.fn()} />);
+      expect(container.textContent).not.toMatch(/[▶⧉🗑⚙⠿✕⏮⏭]/u);
+      expect(container.querySelectorAll('svg').length).toBeGreaterThan(5);
+    });
+
+    it('puts Resume in the hero spot when a run is waiting', () => {
+      const w = seedWorkouts()[1];
+      saveActiveRun(startRun(w, Date.now()));
+      setup();
+      const hero = screen.getByRole('region', { name: 'Up next' });
+      expect(within(hero).getByRole('button', { name: /Resume workout/ })).toBeInTheDocument();
+    });
+  });
 });

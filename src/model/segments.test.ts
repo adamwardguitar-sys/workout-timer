@@ -1,4 +1,4 @@
-import { segmentsForRound, validateWorkout } from './segments';
+import { estimateSeconds, segmentsForRound, validateWorkout } from './segments';
 import { templateFor } from './templates';
 import type { Step, Workout } from './types';
 
@@ -218,5 +218,29 @@ describe('waitBetweenRounds (opt-in pause between rounds)', () => {
   it('is off by default and when false', () => {
     expect(segmentsForRound(w({ waitBetweenRounds: undefined }), 2).some((x) => x.gate)).toBe(false);
     expect(segmentsForRound(w({ waitBetweenRounds: false }), 2).some((x) => x.gate)).toBe(false);
+  });
+});
+
+describe('estimateSeconds', () => {
+  it('adds up get-ready, work and rests across all rounds for a fixed-length workout', () => {
+    // 30 get-ready + 3 exercises x 40 + 2 rests x 20 = 190 (the last rest is dropped)
+    expect(
+      estimateSeconds(wk({ prepSeconds: 30, steps: [timed('A', 40), timed('B', 40), timed('C', 40)], restBetweenSteps: 20, rounds: 1 })),
+    ).toBe(190);
+  });
+
+  it('counts every round', () => {
+    // prep 0, (40 + 20 rest) x 3 rounds minus the final trailing rest = 160
+    expect(estimateSeconds(wk({ steps: [timed('Work', 40), timed('Rest', 20, 'rest')], rounds: 3 }))).toBe(160);
+  });
+
+  it('is unknown (null) when it depends on you: tap steps or until-I-stop', () => {
+    expect(estimateSeconds(wk({ steps: [tap('A')], rounds: 1 }))).toBeNull();
+    expect(estimateSeconds(wk({ steps: [timed('A', 40)], rounds: null }))).toBeNull();
+  });
+
+  it('matches the Tabata template (20/10 x 8) and the AMRAP template', () => {
+    expect(estimateSeconds({ ...templateFor('tabata'), prepSeconds: 0 })).toBe(8 * 20 + 7 * 10);
+    expect(estimateSeconds({ ...templateFor('amrap'), prepSeconds: 0 })).toBe(600);
   });
 });

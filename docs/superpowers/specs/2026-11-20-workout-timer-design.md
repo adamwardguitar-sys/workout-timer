@@ -41,6 +41,11 @@ Owner asked for a professional, simple timer *and tracker*, leaving the product 
 - **Interval and number-field polish:** step rows are aligned, selects have a proper chevron, number boxes can be cleared while typing.
 - **Deferred issues closed:** resume only via the Resume banner (opening a workout starts fresh); double taps ignored and skipping the last step asks first; AMRAP Undo round; other-tab edits never overwritten and picked up live; long gaps no longer end an until-I-stop workout; no beep on a segment's first second; re-importing a backup adds nothing; the audio context is released when leaving the runner; the app reloads itself when a new version is published.
 
+## Revision 4 (2026-11-20): icons and a more engaging home
+
+- One consistent set of inline line icons replaces every emoji and text glyph (tab bar, card actions, grip, back, close, previous/next).
+- Home: greeting with a weekly summary, a Monday-first this-week strip, an "Up next" hero (your most recent workout with a quick start, or Resume when a run is waiting), and richer cards with a mode icon, estimated length (for fixed-length workouts), size and last-done info. Play is the primary action; duplicate, delete and reorder sit in a quieter footer.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.

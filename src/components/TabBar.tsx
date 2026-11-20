@@ -1,9 +1,10 @@
 import type { Navigate, Route } from '../route';
+import { Icon, type IconName } from './Icon';
 
-const TABS: { name: 'library' | 'history' | 'settings'; label: string; icon: string }[] = [
-  { name: 'library', label: 'Workouts', icon: '⏱' },
-  { name: 'history', label: 'History', icon: '📈' },
-  { name: 'settings', label: 'Settings', icon: '⚙' },
+const TABS: { name: 'library' | 'history' | 'settings'; label: string; icon: IconName }[] = [
+  { name: 'library', label: 'Workouts', icon: 'dumbbell' },
+  { name: 'history', label: 'History', icon: 'chart' },
+  { name: 'settings', label: 'Settings', icon: 'sliders' },
 ];
 
 export function TabBar({ route, navigate }: { route: Route; navigate: Navigate }) {
@@ -16,9 +17,7 @@ export function TabBar({ route, navigate }: { route: Route; navigate: Navigate }
           aria-current={route.name === t.name ? 'page' : undefined}
           onClick={() => navigate({ name: t.name })}
         >
-          <span className="tab-icon" aria-hidden>
-            {t.icon}
-          </span>
+          <Icon name={t.icon} size={24} />
           <span>{t.label}</span>
         </button>
       ))}

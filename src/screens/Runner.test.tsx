@@ -638,3 +638,15 @@ describe('Runner weights', () => {
     expect(screen.queryByText('Weights')).not.toBeInTheDocument();
   });
 });
+
+describe('Runner icons', () => {
+  it('uses icons for quit, previous and skip, keeping their accessible names', async () => {
+    const { start } = setup(noPrep);
+    await start();
+    const container = document.body;
+    expect(container.textContent).not.toMatch(/[✕⏮⏭]/u);
+    expect(screen.getByRole('button', { name: 'Quit' }).querySelector('svg')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Previous' }).querySelector('svg')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Skip' }).querySelector('svg')).not.toBeNull();
+  });
+});

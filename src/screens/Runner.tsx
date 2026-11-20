@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cueFor } from '../audio/cues';
+import { Icon } from '../components/Icon';
 import { NumberField } from '../components/NumberField';
 import { WeightFields } from '../components/WeightFields';
 import { createSound, type Sound } from '../audio/sound';
@@ -369,7 +370,7 @@ export function Runner({
     <section className={`screen run run-${seg.role}`}>
       <header className="run-head">
         <button className="btn ghost" onClick={quit}>
-          <span aria-hidden>✕</span>
+          <Icon name="close" />
           <span className="sr-only">Quit</span>
         </button>
         <div className="run-title">
@@ -453,13 +454,13 @@ export function Runner({
 
       <footer className="run-controls">
         <button className="btn" aria-label="Previous" onClick={() => allowTap() && act((r, n) => back(r, n))}>
-          ⏮
+          <Icon name="prev" />
         </button>
         <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
           {paused ? 'Resume' : 'Pause'}
         </button>
         <button className="btn" aria-label="Skip" onClick={onSkip}>
-          ⏭
+          <Icon name="next" />
         </button>
       </footer>
     </section>

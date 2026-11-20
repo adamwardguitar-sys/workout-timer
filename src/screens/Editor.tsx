@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useLibrary } from '../hooks/useLibrary';
+import { Icon } from '../components/Icon';
 import { NumberField } from '../components/NumberField';
 import { MODE_LABELS } from '../model/format';
 import { newId } from '../model/id';
@@ -81,7 +82,7 @@ function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <button className="handle" aria-label={`Reorder step ${n}`} disabled={locked} {...attributes} {...listeners}>
-        ⠿
+        <Icon name="grip" />
       </button>
       <div className="step-fields">
         <input
@@ -159,7 +160,7 @@ function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
         </div>
       </div>
       <button className="btn ghost danger" onClick={onRemove} disabled={locked}>
-        <span aria-hidden>✕</span>
+        <Icon name="close" />
         <span className="sr-only">Remove step {n}</span>
       </button>
     </li>
@@ -219,7 +220,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
     <section className="screen editor">
       <header className="screen-head">
         <button className="btn ghost" onClick={() => leave({ name: 'library' })}>
-          <span aria-hidden>←</span>
+          <Icon name="back" />
           <span className="sr-only">Back to library</span>
         </button>
         <span className="badge">{MODE_LABELS[w.mode]}</span>

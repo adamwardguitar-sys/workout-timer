@@ -168,6 +168,16 @@ describe('Editor validation and leaving', () => {
   });
 });
 
+describe('Editor icons', () => {
+  it('uses icons for back, reorder and remove, keeping their accessible names', () => {
+    setup(templateFor('custom'));
+    expect(document.body.textContent).not.toMatch(/[←✕⠿]/u);
+    for (const name of ['Back to library', 'Reorder step 1', 'Remove step 1']) {
+      expect(screen.getByRole('button', { name }).querySelector('svg')).not.toBeNull();
+    }
+  });
+});
+
 describe('Editor track weight', () => {
   it('each work exercise has a Track weight checkbox (unticked means N/A)', async () => {
     const { user, saved } = setup(templateFor('custom'));

@@ -75,3 +75,19 @@ export function validateWorkout(w: Workout): string[] {
   }
   return errors;
 }
+
+/**
+ * Total seconds for a workout that runs a known length: get-ready, every round, every rest.
+ * Null when it depends on you (tap steps, or "until I stop").
+ */
+export function estimateSeconds(w: Workout): number | null {
+  if (w.rounds === null) return null;
+  let total = 0;
+  for (let round = 0; round <= w.rounds; round++) {
+    for (const seg of segmentsForRound(w, round)) {
+      if (seg.seconds === null) return null;
+      total += seg.seconds;
+    }
+  }
+  return total;
+}

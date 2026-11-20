@@ -48,6 +48,14 @@ describe('Settings controls', () => {
   });
 });
 
+describe('Settings icons', () => {
+  it('uses an icon for the back button', () => {
+    setup();
+    expect(document.body.textContent).not.toMatch(/←/u);
+    expect(screen.getByRole('button', { name: 'Back to library' }).querySelector('svg')).not.toBeNull();
+  });
+});
+
 describe('Settings weight unit', () => {
   it('defaults to kg and can be switched to lb', async () => {
     const { user } = setup();

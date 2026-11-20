@@ -15,32 +15,57 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Icon, MODE_ICONS } from '../components/Icon';
 import { useLibrary } from '../hooks/useLibrary';
-import { MODE_BLURBS, MODE_LABELS, formatTime, relativeDay } from '../model/format';
-import { validateWorkout } from '../model/segments';
+import { MODE_BLURBS, MODE_LABELS, dateLabel, formatDuration, formatTime, relativeDay } from '../model/format';
+import { estimateSeconds, validateWorkout } from '../model/segments';
 import { templateFor } from '../model/templates';
-import { loadActiveRun } from '../store/activeRun';
-import { loadHistory } from '../store/history';
-import { workoutStats } from '../store/stats';
-import { clearCorrupt, listCorrupt } from '../store/library';
-import { saveTextFile } from '../util/download';
 import type { Mode, Workout } from '../model/types';
 import type { Navigate } from '../route';
+import { loadActiveRun } from '../store/activeRun';
+import { loadHistory } from '../store/history';
+import { clearCorrupt, listCorrupt } from '../store/library';
+import { activityGrid, dayKey, thisWeek, workoutStats } from '../store/stats';
+import { saveTextFile } from '../util/download';
 
 const MODES: Mode[] = ['interval', 'tabata', 'emom', 'amrap', 'flow', 'custom'];
+const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-function summary(w: Workout): string {
-  const parts = [`${w.steps.length} ${w.steps.length === 1 ? 'step' : 'steps'}`];
-  parts.push(w.rounds === null ? 'until I stop' : `${w.rounds} ${w.rounds === 1 ? 'round' : 'rounds'}`);
-  if (w.restBetweenRounds > 0) parts.push(`${formatTime(w.restBetweenRounds)} rest`);
-  return parts.join(' · ');
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Short facts about a workout: mode, how long it runs (when that is known), size, rounds. */
+function chips(w: Workout): string[] {
+  const out: string[] = [];
+  const est = estimateSeconds(w);
+  if (est !== null) out.push(`≈ ${formatDuration(est)}`);
+  out.push(plural(w.steps.length, w.mode === 'flow' ? 'exercise' : 'step'));
+  if (w.rounds === null) out.push('until I stop');
+  else if (w.rounds > 1) out.push(plural(w.rounds, 'round'));
+  if (w.mode === 'flow' && w.restBetweenRounds > 0) out.push(`${formatTime(w.restBetweenRounds)} rest`);
+  return out;
+}
+
+function greeting(hour: number): string {
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+type Last = { count: number; lastAt: number };
+
+function LastDone({ last }: { last: Last }) {
+  return (
+    <div className="card-last muted">
+      Last done {relativeDay(last.lastAt, Date.now()).toLowerCase()} · {plural(last.count, 'session')}
+    </div>
+  );
 }
 
 interface CardProps {
   w: Workout;
   index: number;
   navigate: Navigate;
-  last?: { count: number; lastAt: number };
+  last?: Last;
   onDuplicate: () => void;
   onDelete: () => void;
 }
@@ -56,35 +81,44 @@ function WorkoutCard({ w, index, navigate, last, onDuplicate, onDelete }: CardPr
       className={`card${isDragging ? ' dragging' : ''}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <button className="handle" aria-label={`Reorder ${name}`} {...attributes} {...listeners}>
-        ⠿
-      </button>
-      <div className="card-main">
-        <button className="card-title" onClick={() => navigate({ name: 'editor', id: w.id })}>
-          {name}
-        </button>
-        <div className="card-meta">
-          <span className="badge">{MODE_LABELS[w.mode]}</span>
-          <span>{summary(w)}</span>
+      <div className="card-top">
+        <div className="mode-tile" data-mode={w.mode}>
+          <Icon name={MODE_ICONS[w.mode]} size={26} />
         </div>
-        {last && (
-          <div className="card-last muted">
-            Last done {relativeDay(last.lastAt, Date.now()).toLowerCase()} · {last.count}{' '}
-            {last.count === 1 ? 'session' : 'sessions'}
+        <div className="card-main">
+          <button className="card-title" onClick={() => navigate({ name: 'editor', id: w.id })}>
+            {name}
+          </button>
+          <div className="chips">
+            <span className="badge">{MODE_LABELS[w.mode]}</span>
+            {chips(w).map((c) => (
+              <span key={c} className="chip">
+                {c}
+              </span>
+            ))}
           </div>
-        )}
-      </div>
-      <div className="card-actions">
-        <button className="btn primary" disabled={invalid} onClick={() => navigate({ name: 'run', id: w.id })}>
-          <span aria-hidden>▶</span>
+          {last && <LastDone last={last} />}
+        </div>
+        <button
+          className="btn primary play"
+          disabled={invalid}
+          onClick={() => navigate({ name: 'run', id: w.id })}
+        >
+          <Icon name="play" size={24} />
           <span className="sr-only">Start {name}</span>
         </button>
-        <button className="btn ghost" onClick={onDuplicate}>
-          <span aria-hidden>⧉</span>
+      </div>
+      <div className="card-foot">
+        <button className="handle" aria-label={`Reorder ${name}`} {...attributes} {...listeners}>
+          <Icon name="grip" />
+        </button>
+        <span className="spacer" />
+        <button className="btn ghost icon" onClick={onDuplicate}>
+          <Icon name="copy" />
           <span className="sr-only">Duplicate {name}</span>
         </button>
-        <button className="btn ghost danger" onClick={onDelete}>
-          <span aria-hidden>🗑</span>
+        <button className="btn ghost icon danger" onClick={onDelete}>
+          <Icon name="trash" />
           <span className="sr-only">Delete {name}</span>
         </button>
       </div>
@@ -97,11 +131,23 @@ export function Library({ navigate }: { navigate: Navigate }) {
   const [picking, setPicking] = useState(false);
   const [savedRun] = useState(() => loadActiveRun());
   const [corrupt, setCorrupt] = useState(() => listCorrupt());
-  const [stats] = useState(() => workoutStats(loadHistory()));
+  const [sessions] = useState(() => loadHistory());
+  const stats = workoutStats(sessions);
+  const now = Date.now();
+  const week = thisWeek(sessions, now);
+  const weekCells = activityGrid(sessions, now, 1);
+  const todayKey = dayKey(now);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  // "Up next": the workout you did most recently, or the first one if you have not done any yet
+  const featured = lib.workouts.reduce<Workout | undefined>((best, w) => {
+    const at = stats.get(w.id)?.lastAt ?? 0;
+    const bestAt = best ? (stats.get(best.id)?.lastAt ?? 0) : -1;
+    return at > bestAt ? w : best;
+  }, undefined);
 
   function onDragEnd(e: DragEndEvent) {
     if (!e.over || e.active.id === e.over.id) return;
@@ -135,11 +181,91 @@ export function Library({ navigate }: { navigate: Navigate }) {
     if (window.confirm(`Delete "${w.name.trim() || 'Untitled'}"? This can't be undone.`)) lib.remove(w.id);
   }
 
+  const featuredName = featured ? featured.name.trim() || 'Untitled' : '';
+
   return (
-    <section className="screen">
-      <header className="screen-head">
-        <h1>Library</h1>
+    <section className="screen home">
+      <header className="home-head">
+        <div className="brand">
+          <span className="brand-mark">
+            <Icon name="timer" size={20} />
+          </span>
+          Workout Timer
+        </div>
+        <div className="greeting" data-testid="greeting">
+          {greeting(new Date(now).getHours())}
+        </div>
+        <div className="muted" data-testid="week-summary">
+          {week.sessions === 0
+            ? 'No sessions yet this week'
+            : `${plural(week.sessions, 'session')} this week · ${formatDuration(week.seconds)}`}
+        </div>
       </header>
+
+      <div className="week-strip" aria-label="This week">
+        {weekCells.map((c, i) => {
+          const isToday = c.date === todayKey;
+          return (
+            <div key={c.date} className="week-day">
+              <div
+                role="img"
+                className={`dot${c.count > 0 ? ' trained' : ''}${isToday ? ' today' : ''}${c.future ? ' future' : ''}`}
+                aria-label={`${dateLabel(c.date)}: ${c.count > 0 ? 'trained' : c.future ? 'upcoming' : 'no session'}${isToday ? ' (today)' : ''}`}
+              >
+                {c.count > 0 && <Icon name="play" size={12} />}
+              </div>
+              <span className={isToday ? 'letter today' : 'letter'}>{WEEKDAY_LETTERS[i]}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {savedRun ? (
+        <section className="hero hero-resume" aria-label="Up next">
+          <div className="eyebrow">In progress</div>
+          <div className="hero-title">{savedRun.workout.name.trim() || 'Untitled'}</div>
+          <button
+            className="btn primary huge"
+            onClick={() => navigate({ name: 'run', id: savedRun.workout.id, resume: true })}
+          >
+            <Icon name="play" size={24} />
+            Resume workout · {savedRun.workout.name.trim() || 'Untitled'}
+          </button>
+        </section>
+      ) : (
+        featured && (
+          <section className="hero" aria-label="Up next">
+            <div className="eyebrow">Up next</div>
+            <div className="hero-title">{featuredName}</div>
+            <div className="chips">
+              <span className="badge">{MODE_LABELS[featured.mode]}</span>
+              {chips(featured).map((c) => (
+                <span key={c} className="chip">
+                  {c}
+                </span>
+              ))}
+            </div>
+            {stats.get(featured.id) && <LastDone last={stats.get(featured.id)!} />}
+            <button
+              className="btn primary huge"
+              aria-label={`Quick start ${featuredName}`}
+              disabled={validateWorkout(featured).length > 0}
+              onClick={() => navigate({ name: 'run', id: featured.id })}
+            >
+              <Icon name="play" size={24} />
+              Start
+            </button>
+          </section>
+        )
+      )}
+
+      <div className="section-head">
+        <h1>Library</h1>
+        <button className="btn" onClick={() => setPicking(true)}>
+          <Icon name="plus" size={20} />
+          New workout
+        </button>
+      </div>
 
       {corrupt.length > 0 && (
         <div className="notice" role="status">
@@ -155,16 +281,6 @@ export function Library({ navigate }: { navigate: Navigate }) {
         </div>
       )}
 
-      {savedRun && (
-        <button className="btn resume wide" onClick={() => navigate({ name: 'run', id: savedRun.workout.id, resume: true })}>
-          Resume workout · {savedRun.workout.name.trim() || 'Untitled'}
-        </button>
-      )}
-
-      <button className="btn primary wide" onClick={() => setPicking(true)}>
-        New workout
-      </button>
-
       {picking && (
         <div className="sheet-backdrop" onClick={() => setPicking(false)}>
           <div className="sheet" role="dialog" aria-label="Choose a mode" onClick={(e) => e.stopPropagation()}>
@@ -173,8 +289,13 @@ export function Library({ navigate }: { navigate: Navigate }) {
               {MODES.map((m) => (
                 <li key={m}>
                   <button className="mode-option" onClick={() => create(m)}>
-                    <strong>{MODE_LABELS[m]}</strong>
-                    <span>{MODE_BLURBS[m]}</span>
+                    <span className="mode-tile small" data-mode={m}>
+                      <Icon name={MODE_ICONS[m]} size={22} />
+                    </span>
+                    <span className="mode-text">
+                      <strong>{MODE_LABELS[m]}</strong>
+                      <span>{MODE_BLURBS[m]}</span>
+                    </span>
                   </button>
                 </li>
               ))}

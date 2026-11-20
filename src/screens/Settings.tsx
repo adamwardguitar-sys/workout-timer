@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../components/Icon';
 import { useLibrary } from '../hooks/useLibrary';
 import type { Navigate } from '../route';
 import { saveTextFile } from '../util/download';
@@ -53,7 +54,7 @@ export function Settings({ navigate }: { navigate: Navigate }) {
     <section className="screen">
       <header className="screen-head">
         <button className="btn ghost" onClick={() => navigate({ name: 'library' })}>
-          <span aria-hidden>←</span>
+          <Icon name="back" />
           <span className="sr-only">Back to library</span>
         </button>
         <h1>Settings</h1>
