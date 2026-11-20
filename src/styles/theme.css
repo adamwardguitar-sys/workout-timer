@@ -183,3 +183,4 @@ h1, h2, .run-title, .run-label, .item, .card-title { overflow-wrap: anywhere; }
 .session-actions { display: flex; gap: 6px; margin-top: 6px; }
 .btn.small { min-height: 36px; font-size: 0.85rem; padding: 0 10px; }
 .note-edit { margin-top: 8px; display: grid; gap: 8px; }
+.card-last { font-size: 0.8rem; margin-top: 4px; }

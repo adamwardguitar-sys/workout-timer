@@ -99,6 +99,19 @@ export function addSession(s: Session, storage: Storage | undefined = defaultSto
   return next;
 }
 
+/** Adds the sessions you do not already have (matched by id). */
+export function importSessions(
+  incoming: Session[],
+  storage: Storage | undefined = defaultStorage(),
+): { added: number; sessions: Session[] } {
+  const list = loadHistory(storage);
+  const have = new Set(list.map((s) => s.id));
+  const fresh = incoming.filter((s) => !have.has(s.id));
+  const next = [...list, ...fresh];
+  if (fresh.length > 0) saveHistory(next, storage);
+  return { added: fresh.length, sessions: next };
+}
+
 export function setNote(id: string, note: string, storage: Storage | undefined = defaultStorage()): Session[] {
   const trimmed = note.trim();
   const next = loadHistory(storage).map((s) => {

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Settings } from './Settings';
 import { exportLibrary, loadLibrary } from '../store/library';
 import { loadSettings } from '../store/settings';
+import { addSession, loadHistory, type Session } from '../store/history';
 
 beforeEach(() => {
   localStorage.clear();
@@ -89,5 +90,40 @@ describe('Settings backup', () => {
     await upload(user, exportLibrary(ws));
     expect(await screen.findByRole('alert')).toHaveTextContent('Full Body A');
     expect(loadLibrary()).toHaveLength(3);
+  });
+
+  const session = (id: string): Session => ({
+    id,
+    workoutId: 'w',
+    workoutName: 'W',
+    mode: 'interval',
+    startedAt: 1,
+    durationSec: 60,
+    roundsDone: 1,
+    laps: 0,
+    completed: true,
+  });
+
+  it('Export includes the session history', async () => {
+    let blob: Blob | undefined;
+    URL.createObjectURL = vi.fn((b: Blob | MediaSource) => {
+      blob = b as Blob;
+      return 'blob:backup';
+    });
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    addSession(session('h1'));
+    const { user } = setup();
+    await user.click(screen.getByRole('button', { name: 'Export backup' }));
+    expect(await blob!.text()).toBe(exportLibrary(loadLibrary(), [session('h1')]));
+  });
+
+  it('Import brings in sessions as well as workouts, without duplicating ones you have', async () => {
+    addSession(session('h1'));
+    const { user } = setup();
+    const file = exportLibrary(loadLibrary().slice(0, 1), [session('h1'), session('h2'), session('h3')]);
+    await upload(user, file);
+    expect(await screen.findByText('Imported 1 workout and 2 sessions')).toBeInTheDocument();
+    expect(loadHistory().map((s) => s.id)).toEqual(['h1', 'h2', 'h3']);
   });
 });

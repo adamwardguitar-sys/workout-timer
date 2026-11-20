@@ -1,6 +1,7 @@
 import { newId } from '../model/id';
 import { validateWorkout } from '../model/segments';
 import type { Workout } from '../model/types';
+import { isSession, type Session } from './history';
 import { FULL_BODY_A, FULL_BODY_B, seedWorkouts } from './seed';
 
 export const LIBRARY_KEY = 'workout-timer:library:v1';
@@ -193,11 +194,11 @@ export function loadLibrary(storage: Storage | undefined = defaultStorage()): Wo
   return seeds;
 }
 
-export function exportLibrary(ws: Workout[]): string {
-  return JSON.stringify({ app: 'workout-timer', version: 1, workouts: ws }, null, 2);
+export function exportLibrary(ws: Workout[], history: Session[] = []): string {
+  return JSON.stringify({ app: 'workout-timer', version: 2, workouts: ws, history }, null, 2);
 }
 
-export type ImportResult = { ok: true; workouts: Workout[] } | { ok: false; error: string };
+export type ImportResult = { ok: true; workouts: Workout[]; history: Session[] } | { ok: false; error: string };
 
 export function parseImport(json: string): ImportResult {
   let data: unknown;
@@ -206,7 +207,7 @@ export function parseImport(json: string): ImportResult {
   } catch {
     return { ok: false, error: 'That file is not valid JSON.' };
   }
-  const d = data as { app?: unknown; workouts?: unknown } | null;
+  const d = data as { app?: unknown; workouts?: unknown; history?: unknown } | null;
   if (typeof d !== 'object' || d === null || d.app !== 'workout-timer') {
     return { ok: false, error: 'That file is not a Workout Timer backup.' };
   }
@@ -217,7 +218,12 @@ export function parseImport(json: string): ImportResult {
     const problems = validateWorkout(w);
     if (problems.length > 0) return { ok: false, error: `"${w.name}" is invalid: ${problems[0]}` };
   }
-  return { ok: true, workouts: d.workouts };
+  // older backups (version 1) have no history
+  const history = d.history ?? [];
+  if (!Array.isArray(history) || !history.every(isSession)) {
+    return { ok: false, error: 'The history in that file is not in the expected format.' };
+  }
+  return { ok: true, workouts: d.workouts, history };
 }
 
 export function mergeImport(existing: Workout[], incoming: Workout[]): Workout[] {

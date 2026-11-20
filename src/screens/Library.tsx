@@ -16,10 +16,12 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useLibrary } from '../hooks/useLibrary';
-import { MODE_BLURBS, MODE_LABELS, formatTime } from '../model/format';
+import { MODE_BLURBS, MODE_LABELS, formatTime, relativeDay } from '../model/format';
 import { validateWorkout } from '../model/segments';
 import { templateFor } from '../model/templates';
 import { loadActiveRun } from '../store/activeRun';
+import { loadHistory } from '../store/history';
+import { workoutStats } from '../store/stats';
 import { clearCorrupt, listCorrupt } from '../store/library';
 import { saveTextFile } from '../util/download';
 import type { Mode, Workout } from '../model/types';
@@ -38,11 +40,12 @@ interface CardProps {
   w: Workout;
   index: number;
   navigate: Navigate;
+  last?: { count: number; lastAt: number };
   onDuplicate: () => void;
   onDelete: () => void;
 }
 
-function WorkoutCard({ w, index, navigate, onDuplicate, onDelete }: CardProps) {
+function WorkoutCard({ w, index, navigate, last, onDuplicate, onDelete }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: w.id });
   const name = w.name.trim() || 'Untitled';
   const invalid = validateWorkout(w).length > 0;
@@ -64,6 +67,12 @@ function WorkoutCard({ w, index, navigate, onDuplicate, onDelete }: CardProps) {
           <span className="badge">{MODE_LABELS[w.mode]}</span>
           <span>{summary(w)}</span>
         </div>
+        {last && (
+          <div className="card-last muted">
+            Last done {relativeDay(last.lastAt, Date.now()).toLowerCase()} · {last.count}{' '}
+            {last.count === 1 ? 'session' : 'sessions'}
+          </div>
+        )}
       </div>
       <div className="card-actions">
         <button className="btn primary" disabled={invalid} onClick={() => navigate({ name: 'run', id: w.id })}>
@@ -88,6 +97,7 @@ export function Library({ navigate }: { navigate: Navigate }) {
   const [picking, setPicking] = useState(false);
   const [savedRun] = useState(() => loadActiveRun());
   const [corrupt, setCorrupt] = useState(() => listCorrupt());
+  const [stats] = useState(() => workoutStats(loadHistory()));
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -185,6 +195,7 @@ export function Library({ navigate }: { navigate: Navigate }) {
                 w={w}
                 index={i}
                 navigate={navigate}
+                last={stats.get(w.id)}
                 onDuplicate={() => lib.duplicate(w.id)}
                 onDelete={() => confirmDelete(w)}
               />

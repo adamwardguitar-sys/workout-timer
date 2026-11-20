@@ -4,6 +4,7 @@ import { Library } from './Library';
 import { LIBRARY_KEY, listCorrupt, loadLibrary, saveLibrary } from '../store/library';
 import { seedWorkouts } from '../store/seed';
 import { saveActiveRun } from '../store/activeRun';
+import { addSession } from '../store/history';
 import { startRun } from '../engine/runner';
 
 beforeEach(() => {
@@ -164,6 +165,35 @@ describe('Library', () => {
       expect(confirm).toHaveBeenCalledTimes(2);
       expect(screen.queryByText(/could not be read/)).not.toBeInTheDocument();
       expect(listCorrupt()).toEqual([]);
+    });
+  });
+
+  describe('card history', () => {
+    const logged = (id: string, workoutId: string, startedAt: number) => ({
+      id,
+      workoutId,
+      workoutName: 'x',
+      mode: 'interval' as const,
+      startedAt,
+      durationSec: 600,
+      roundsDone: 1,
+      laps: 0,
+      completed: true,
+    });
+
+    it('shows when each workout was last done and how many times', () => {
+      const [a] = loadLibrary();
+      const day = 86_400_000;
+      addSession(logged('1', a.id, Date.now() - 3 * day));
+      addSession(logged('2', a.id, Date.now() - 10 * day));
+      setup();
+      const card = screen.getByRole('button', { name: 'Full Body A' }).closest('li')!;
+      expect(within(card).getByText('Last done 3 days ago · 2 sessions')).toBeInTheDocument();
+    });
+
+    it('says nothing for a workout you have not done', () => {
+      setup();
+      expect(screen.queryByText(/Last done/)).not.toBeInTheDocument();
     });
   });
 });

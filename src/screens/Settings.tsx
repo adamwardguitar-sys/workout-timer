@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLibrary } from '../hooks/useLibrary';
 import type { Navigate } from '../route';
 import { saveTextFile } from '../util/download';
+import { importSessions, loadHistory } from '../store/history';
 import { exportLibrary, parseImport } from '../store/library';
 import { loadSettings, saveSettings, type Settings as SettingsData } from '../store/settings';
 
@@ -19,7 +20,7 @@ export function Settings({ navigate }: { navigate: Navigate }) {
   };
 
   function exportBackup() {
-    void saveTextFile('workout-timer-backup.json', exportLibrary(lib.workouts));
+    void saveTextFile('workout-timer-backup.json', exportLibrary(lib.workouts, loadHistory()));
   }
 
   async function importBackup(file: File | undefined) {
@@ -37,8 +38,10 @@ export function Settings({ navigate }: { navigate: Navigate }) {
       return;
     }
     lib.importMerge(result.workouts);
+    const { added } = importSessions(result.history);
     const n = result.workouts.length;
-    setNotice({ kind: 'ok', text: `Imported ${n} ${n === 1 ? 'workout' : 'workouts'}` });
+    const sessions = added > 0 ? ` and ${added} ${added === 1 ? 'session' : 'sessions'}` : '';
+    setNotice({ kind: 'ok', text: `Imported ${n} ${n === 1 ? 'workout' : 'workouts'}${sessions}` });
   }
 
   return (

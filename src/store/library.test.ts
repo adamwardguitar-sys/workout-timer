@@ -11,6 +11,7 @@ import {
 } from './library';
 import { FULL_BODY_A, FULL_BODY_B, seedWorkouts } from './seed';
 import type { Workout } from '../model/types';
+import type { Session } from './history';
 import { validateWorkout } from '../model/segments';
 import { memStorage, throwingStorage } from '../test/memStorage';
 
@@ -239,10 +240,42 @@ describe('loadLibrary / saveLibrary', () => {
 });
 
 describe('export / import', () => {
+  const session = (id: string): Session => ({
+    id,
+    workoutId: 'w',
+    workoutName: 'W',
+    mode: 'interval',
+    startedAt: 1,
+    durationSec: 60,
+    roundsDone: 1,
+    laps: 0,
+    completed: true,
+  });
+
   it('round trips', () => {
     const ws = seedWorkouts();
     const out = parseImport(exportLibrary(ws));
-    expect(out).toEqual({ ok: true, workouts: ws });
+    expect(out).toEqual({ ok: true, workouts: ws, history: [] });
+  });
+
+  it('round trips the session history too', () => {
+    const ws = seedWorkouts();
+    const hist = [session('a'), { ...session('b'), note: 'good' }];
+    expect(parseImport(exportLibrary(ws, hist))).toEqual({ ok: true, workouts: ws, history: hist });
+  });
+
+  it('still accepts an older backup that has no history', () => {
+    const old = JSON.stringify({ app: 'workout-timer', version: 1, workouts: seedWorkouts() });
+    const out = parseImport(old);
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.history).toEqual([]);
+  });
+
+  it('rejects a backup whose history is malformed', () => {
+    const bad = JSON.stringify({ app: 'workout-timer', version: 2, workouts: [], history: [{ id: 'x' }] });
+    const out = parseImport(bad);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error).toMatch(/history/i);
   });
 
   it.each([

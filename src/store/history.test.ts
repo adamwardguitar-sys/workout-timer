@@ -2,6 +2,7 @@ import {
   HISTORY_CORRUPT_KEY,
   HISTORY_KEY,
   addSession,
+  importSessions,
   loadHistory,
   removeSession,
   saveHistory,
@@ -80,5 +81,14 @@ describe('history store', () => {
   it('does not throw when storage is unavailable', () => {
     expect(loadHistory(throwingStorage())).toEqual([]);
     expect(() => addSession(sess(), throwingStorage())).not.toThrow();
+  });
+
+  it('importSessions adds only sessions it does not already have and reports how many', () => {
+    const st = memStorage();
+    addSession(sess(), st);
+    const out = importSessions([sess(), sess({ id: 's2' }), sess({ id: 's3' })], st);
+    expect(out.added).toBe(2);
+    expect(loadHistory(st).map((s) => s.id)).toEqual(['s1', 's2', 's3']);
+    expect(importSessions([sess({ id: 's2' })], st).added).toBe(0);
   });
 });
