@@ -5,6 +5,7 @@ import {
   pause,
   remainingMs,
   resume,
+  skip,
   startRun,
   summarize,
   undoLap,
@@ -164,6 +165,57 @@ describe('amrap counter', () => {
     const end = update(d2.state, T0 + s(600));
     expect(end.state.finished).toBe(true);
     expect(end.events).toEqual([{ type: 'finish' }]);
+  });
+});
+
+describe('skip', () => {
+  // prep 0-10, A 10-50, Rest 50-70, B 70-110
+  const list = wk({ prepSeconds: 10, steps: [timed('A', 40), timed('B', 40)], restBetweenSteps: 20, rounds: 1 });
+  const at = (sec: number) => update(startRun(list, T0), T0 + s(sec)).state;
+
+  it('from get ready goes to the first exercise', () => {
+    const out = skip(at(3), T0 + s(3));
+    expect(currentSegment(out.state).label).toBe('A');
+    expect(remainingMs(out.state, T0 + s(3))).toBe(s(40));
+    expect(out.events).toEqual([{ type: 'segment-start', segment: currentSegment(out.state) }]);
+  });
+
+  it('from an exercise goes to whatever comes next (its rest)', () => {
+    const out = skip(at(15), T0 + s(15));
+    expect(currentSegment(out.state)).toMatchObject({ role: 'rest', label: 'Rest' });
+    expect(remainingMs(out.state, T0 + s(15))).toBe(s(20));
+  });
+
+  it('from a rest goes to the next exercise', () => {
+    const out = skip(at(55), T0 + s(55));
+    expect(currentSegment(out.state).label).toBe('B');
+    expect(remainingMs(out.state, T0 + s(55))).toBe(s(40));
+  });
+
+  it('from the last exercise finishes the workout', () => {
+    const out = skip(at(80), T0 + s(80));
+    expect(out.state.finished).toBe(true);
+    expect(out.events).toEqual([{ type: 'finish' }]);
+  });
+
+  it('uses the moment you paused', () => {
+    const paused = pause(at(20), T0 + s(20));
+    const out = skip(paused, T0 + s(500));
+    expect(currentSegment(out.state).role).toBe('rest');
+    expect(out.state.pausedAt).toBe(T0 + s(20));
+    expect(remainingMs(out.state, T0 + s(500))).toBe(s(20));
+  });
+
+  it('open-ended rounds: from the rest it starts the next round', () => {
+    const flow = wk({ steps: [tap('A'), tap('B')], rounds: null, restBetweenRounds: 120 });
+    const rested = done(startRun(flow, T0), T0 + s(30)).state;
+    const next = skip(rested, T0 + s(40));
+    expect(currentSegment(next.state)).toMatchObject({ role: 'work', round: 2, seconds: null });
+  });
+
+  it('does nothing once the workout is finished', () => {
+    const finished = skip(at(80), T0 + s(80)).state;
+    expect(skip(finished, T0 + s(90))).toEqual({ state: finished, events: [] });
   });
 });
 

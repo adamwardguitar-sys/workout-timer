@@ -11,6 +11,7 @@ import {
   pause,
   remainingMs,
   resume,
+  skip,
   startRun,
   summarize,
   undoLap,
@@ -209,6 +210,15 @@ export function Runner({
     }
   }
 
+  function onSkip() {
+    if (!allowTap()) return;
+    const cur = runRef.current;
+    if (!cur) return;
+    // skipping the very last step ends the workout: make sure that is what was meant
+    if (skip(cur, Date.now()).state.finished && !window.confirm('Finish the workout now?')) return;
+    act(skip);
+  }
+
   function quit() {
     if (window.confirm('End this workout? Your progress so far is saved to your history.')) {
       const cur = runRef.current;
@@ -348,6 +358,8 @@ export function Runner({
   const paused = run.pausedAt !== null;
   // Timed exercises run by themselves: the only control is Pause. There is nothing to tap to move on.
   const canPause = seg.seconds !== null;
+  // One optional Skip moves on to whatever comes next; nothing ever requires it.
+  const skipLabel = !canPause || seg.counter ? null : seg.role === 'prep' ? 'Skip get ready' : seg.role === 'rest' ? 'Skip rest' : 'Skip exercise';
   const roundLabel =
     seg.counter || seg.round === 0 || workout.rounds === 1
       ? null
@@ -441,6 +453,12 @@ export function Runner({
           <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
             {paused ? 'Resume' : 'Pause'}
           </button>
+          {skipLabel && (
+            <button className="btn" onClick={onSkip}>
+              <Icon name="next" size={20} />
+              {skipLabel}
+            </button>
+          )}
         </footer>
       )}
     </section>

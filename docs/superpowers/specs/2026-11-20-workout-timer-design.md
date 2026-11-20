@@ -64,6 +64,10 @@ After use, the six modes and the wait-for-a-tap setting were confusing. Simplifi
 
 Tapping to jump between exercises is removed everywhere: no Next/Previous exercise, Skip rest, Skip get ready or Finish now (Quit ends a workout and logs it). In a timed workout the only control is Pause. The per-exercise tap setting (`advance`) is gone; untimed exercises always form one round ended by **Round done**, and a legacy `advance` value in saved data is ignored. The rest of a round can still be nudged with the −15s / +15s buttons.
 
+## Revision 8 (2026-11-20): one optional Skip
+
+Next/Previous stayed removed, but a single optional **Skip** sits beside Pause on timed steps and moves to whatever comes next (get ready to first exercise, exercise to its rest, rest to next exercise); it reads Skip get ready / Skip exercise / Skip rest. Skipping the very last step asks first. There is no Previous, no Skip on the untimed round list (only **Round done**) and none on AMRAP (Quit ends it). Nothing ever requires a tap: Timer workouts still play straight through on their own. Double taps within 400 ms are ignored.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.

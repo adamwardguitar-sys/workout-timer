@@ -147,6 +147,13 @@ export function done(s: RunState, now: number): Stepped {
   return { state: st, events: stepEvents(st) };
 }
 
+/** Move on to whatever comes next (get ready, then exercise, then rest, ...), or finish if nothing does. */
+export function skip(s: RunState, now: number): Stepped {
+  if (s.finished) return { state: s, events: [] };
+  const st = moveNext(s, s.pausedAt ?? now);
+  return { state: st, events: stepEvents(st) };
+}
+
 export function undoLap(s: RunState): RunState {
   return { ...s, laps: Math.max(0, s.laps - 1) };
 }

@@ -115,7 +115,7 @@ input[type='checkbox'], input[type='radio'] { min-height: 0; width: 20px; height
 .item.done { opacity: 0.4; text-decoration: line-through; }
 .adjust { display: flex; gap: 12px; }
 .run-next { text-align: center; padding: 8px 0; }
-.run-controls { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr; gap: 10px; padding: 10px 0 4px; background: linear-gradient(180deg, transparent, rgba(16, 19, 21, 0.85) 30%); }
+.run-controls { position: sticky; bottom: 0; display: flex; gap: 10px; padding: 10px 0 4px; background: linear-gradient(180deg, transparent, rgba(16, 19, 21, 0.85) 30%); }
 .run-controls .btn { min-height: 56px; font-size: 1.25rem; }
 .resume-overlay { position: fixed; inset: auto var(--gutter) 40% var(--gutter); width: auto; z-index: 5; }
 
@@ -327,3 +327,6 @@ button.progress-row[aria-expanded='true']::after { content: 'Hide trend'; }
 .chart .end-label { paint-order: stroke; stroke: var(--chart-surface); stroke-width: 4px; stroke-linejoin: round; }
 .chart-frame { max-width: 520px; }
 .preset-title { margin: 12px 0 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+.run-controls .btn { flex: 1; }
+.run-controls .btn.primary { flex: 1; }
+.run-controls .btn:not(.primary) { flex: 1.6; white-space: nowrap; }
