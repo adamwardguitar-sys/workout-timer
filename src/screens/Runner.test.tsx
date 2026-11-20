@@ -575,6 +575,25 @@ describe('Runner icons', () => {
   });
 });
 
+describe('Runner icon-only controls', () => {
+  it('Pause, Resume and Skip show just an icon, with the words kept for screen readers', async () => {
+    const { user, start } = setup(list3);
+    await start();
+    tick(1_000);
+    const pause = screen.getByRole('button', { name: 'Pause' });
+    const skipBtn = screen.getByRole('button', { name: 'Skip exercise' });
+    for (const b of [pause, skipBtn]) {
+      expect(b.querySelector('svg')).not.toBeNull();
+      expect(b.textContent).toBe('');
+    }
+    await user.click(pause);
+    const resume = screen.getByRole('button', { name: 'Resume' });
+    expect(resume.querySelector('svg')).not.toBeNull();
+    expect(resume.textContent).toBe('');
+    expect(screen.getByText('Paused')).toBeInTheDocument();
+  });
+});
+
 describe('Runner Skip button', () => {
   const GONE = ['Previous exercise', 'Next exercise', 'Previous', 'Finish now'];
   const noBackOrFinish = () => {

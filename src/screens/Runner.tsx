@@ -450,13 +450,16 @@ export function Runner({
 
       {canPause && (
         <footer className="run-controls">
-          <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
-            {paused ? 'Resume' : 'Pause'}
+          <button
+            className="btn primary"
+            aria-label={paused ? 'Resume' : 'Pause'}
+            onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}
+          >
+            <Icon name={paused ? 'play' : 'pause'} size={30} />
           </button>
           {skipLabel && (
-            <button className="btn" onClick={onSkip}>
-              <Icon name="next" size={20} />
-              {skipLabel}
+            <button className="btn" aria-label={skipLabel} onClick={onSkip}>
+              <Icon name="next" size={30} />
             </button>
           )}
         </footer>

@@ -12,6 +12,12 @@ const PATHS = {
     </>
   ),
   play: <path d="M8 5.5l10 6.5-10 6.5z" fill="currentColor" />,
+  pause: (
+    <>
+      <rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+      <rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+    </>
+  ),
   copy: (
     <>
       <rect x="9" y="9" width="11" height="11" rx="2.5" />

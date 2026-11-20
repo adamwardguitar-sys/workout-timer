@@ -327,6 +327,9 @@ button.progress-row[aria-expanded='true']::after { content: 'Hide trend'; }
 .chart .end-label { paint-order: stroke; stroke: var(--chart-surface); stroke-width: 4px; stroke-linejoin: round; }
 .chart-frame { max-width: 520px; }
 .preset-title { margin: 12px 0 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
-.run-controls .btn { flex: 1; }
-.run-controls .btn.primary { flex: 1; }
-.run-controls .btn:not(.primary) { flex: 1.6; white-space: nowrap; }
+
+/* icon-only transport controls, centred under the clock */
+.run-controls { justify-content: center; gap: 18px; }
+.run-controls .btn { flex: none; width: 84px; min-height: 64px; padding: 0; border-radius: 20px; }
+.run-controls .btn .icon { margin: 0; }
+.run-controls { background: none; }
