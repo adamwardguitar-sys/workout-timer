@@ -64,3 +64,9 @@ export function dateLabel(key: string): string {
   const dt = new Date(y, m - 1, d);
   return `${WEEKDAYS[dt.getDay()]} ${d} ${MONTHS[m - 1]}`;
 }
+
+/** A timestamp as day and month: "2 Nov". */
+export function shortDate(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}

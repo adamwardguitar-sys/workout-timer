@@ -77,6 +77,8 @@ export interface WeightPoint {
 export interface ExerciseProgress {
   exercise: string;
   latest: WeightPoint;
+  /** Every logged weight in the latest unit, oldest first (for charting). */
+  points: WeightPoint[];
   /** The most recent earlier weight that was different (same unit), if any. */
   previous?: WeightPoint;
 }
@@ -113,7 +115,8 @@ export function exerciseProgress(sessions: Session[]): ExerciseProgress[] {
       .reverse()
       .slice(1)
       .find((p) => p.unit === latest.unit && p.value !== latest.value);
-    rows.push({ exercise: e.exercise, latest, ...(previous ? { previous } : {}) });
+    const points = e.points.filter((p) => p.unit === latest.unit);
+    rows.push({ exercise: e.exercise, latest, points, ...(previous ? { previous } : {}) });
   }
   return rows.sort((a, b) => b.latest.at - a.latest.at);
 }

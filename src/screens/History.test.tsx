@@ -175,4 +175,33 @@ describe('History weights', () => {
     setup([sess('a', at(11, 19))]);
     expect(screen.queryByRole('region', { name: 'Exercise weights' })).not.toBeInTheDocument();
   });
+
+  it('tapping an exercise with more than one logged weight shows its chart, and tapping again hides it', async () => {
+    const { user } = setup(wlist);
+    const row = screen.getByRole('button', { name: /Goblet Squat/ });
+    expect(row).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('group', { name: /Goblet Squat weight over time/ })).not.toBeInTheDocument();
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('group', { name: /Goblet Squat weight over time: 12 kg on 2 Nov to 16 kg on 16 Nov, 2 sessions/ })).toBeInTheDocument();
+    await user.click(row);
+    expect(screen.queryByRole('group', { name: /Goblet Squat weight over time/ })).not.toBeInTheDocument();
+  });
+
+  it('an exercise logged only once has nothing to chart yet', () => {
+    setup(wlist);
+    expect(screen.queryByRole('button', { name: /Bicep Curls/ })).not.toBeInTheDocument();
+  });
+
+  it('only one chart is open at a time', async () => {
+    const many = [
+      sess('a', at(11, 2, 8), { tracked: ['X', 'Y'], weights: [{ exercise: 'X', value: 1 }, { exercise: 'Y', value: 5 }], unit: 'kg' }),
+      sess('b', at(11, 9, 8), { tracked: ['X', 'Y'], weights: [{ exercise: 'X', value: 2 }, { exercise: 'Y', value: 6 }], unit: 'kg' }),
+    ];
+    const { user } = setup(many);
+    await user.click(screen.getByRole('button', { name: /^X/ }));
+    await user.click(screen.getByRole('button', { name: /^Y/ }));
+    expect(screen.queryByRole('group', { name: /^X weight/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /^Y weight/ })).toBeInTheDocument();
+  });
 });

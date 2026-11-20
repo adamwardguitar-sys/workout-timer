@@ -46,6 +46,10 @@ Owner asked for a professional, simple timer *and tracker*, leaving the product 
 - One consistent set of inline line icons replaces every emoji and text glyph (tab bar, card actions, grip, back, close, previous/next).
 - Home: greeting with a weekly summary, a Monday-first this-week strip, an "Up next" hero (your most recent workout with a quick start, or Resume when a run is waiting), and richer cards with a mode icon, estimated length (for fixed-length workouts), size and last-done info. Play is the primary action; duplicate, delete and reorder sit in a quieter footer.
 
+## Revision 5 (2026-11-20): weight trend chart
+
+Tapping an exercise in History's *Exercise weights* opens a single-series line chart of its logged weights (one open at a time; exercises logged once have nothing to chart yet). Built to the data-viz guidance: 2px line, ringed 5px markers, hairline solid grid, round axis ticks, only the latest value labelled (text colour, never the series colour), tooltip on hover and keyboard focus with the value first, hit areas of at least 24px, and a "Show data" table of every value. The mark colour `#10a28d` is a deeper spearmint that passes the dark-mode palette validator (the brighter brand accent is too light for chart marks).
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.

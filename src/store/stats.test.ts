@@ -87,6 +87,14 @@ describe('weights', () => {
     expect(p[1].previous).toBeUndefined(); // 20 both times
   });
 
+  it('exerciseProgress includes every logged point, oldest first, in the latest unit', () => {
+    const p = exerciseProgress(list);
+    expect(p[0].points.map((x) => x.value)).toEqual([12, 16, 16]);
+    expect(p[0].points.map((x) => x.at)).toEqual([at(11, 2), at(11, 9), at(11, 16)]);
+    const mixed = [w('a', at(11, 2), [{ exercise: 'Row', value: 40 }], 'lb'), w('b', at(11, 9), [{ exercise: 'Row', value: 20 }], 'kg'), w('c', at(11, 16), [{ exercise: 'Row', value: 22 }], 'kg')];
+    expect(exerciseProgress(mixed)[0].points.map((x) => x.value)).toEqual([20, 22]);
+  });
+
   it('does not compare weights across different units', () => {
     const mixed = [w('a', at(11, 2), [{ exercise: 'Row', value: 40 }], 'lb'), w('b', at(11, 9), [{ exercise: 'Row', value: 20 }], 'kg')];
     expect(exerciseProgress(mixed)[0].previous).toBeUndefined();

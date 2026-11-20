@@ -17,7 +17,7 @@ Every workout has a configurable **get ready** countdown (30 seconds by default)
 
 Every workout you do is logged automatically, including ones you end early (anything past 30 seconds). It is a record, not a scoreboard: no streaks to chase.
 
-- **History tab:** this week's sessions and time, the last four weeks (with a per-week average), a 4-week activity grid (tap a day to see just that day), exercise weights over time, and every past session with its time, rounds, weights and an optional note.
+- **History tab:** this week's sessions and time, the last four weeks (with a per-week average), a 4-week activity grid (tap a day to see just that day), exercise weights over time (tap an exercise for its trend chart, with a table of every value), and every past session with its time, rounds, weights and an optional note.
 - **Weights:** tick **Track weight** on the exercises where it applies in the editor (unticked means N/A). When a workout ends you are asked for the weight for just those exercises, starting from what you lifted last time. You can add or edit weights on any past session. Choose kg or lb in Settings.
 - **Workout cards** show when you last did them and how many times. Backups include your history.
 

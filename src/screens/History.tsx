@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { WeightChart } from '../components/WeightChart';
 import { WeightFields } from '../components/WeightFields';
 import { useHistory } from '../hooks/useHistory';
 import { dateLabel, formatDuration, relativeDay } from '../model/format';
@@ -133,6 +134,7 @@ export function History({ now = Date.now() }: { now?: number }) {
   const h = useHistory();
   const defaultUnit = loadSettings().weightUnit;
   const [day, setDay] = useState<string | null>(null);
+  const [openChart, setOpenChart] = useState<string | null>(null);
 
   const week = thisWeek(h.sessions, now);
   const grid = activityGrid(h.sessions, now, 4);
@@ -198,19 +200,38 @@ export function History({ now = Date.now() }: { now?: number }) {
         <section aria-label="Exercise weights" className="progress">
           <h2>Exercise weights</h2>
           <ul className="progress-list">
-            {progress.map((p) => (
-              <li key={p.exercise}>
-                <strong>{p.exercise}</strong>
-                <span className="progress-value">
-                  {p.latest.value} {p.latest.unit}
-                </span>
-                <span className="muted">
-                  {p.previous
-                    ? `${p.latest.value > p.previous.value ? 'up' : 'down'} from ${p.previous.value} ${p.previous.unit} · ${relativeDay(p.latest.at, now).toLowerCase()}`
-                    : `first logged ${relativeDay(p.latest.at, now).toLowerCase()}`}
-                </span>
-              </li>
-            ))}
+            {progress.map((p) => {
+              const summary = (
+                <>
+                  <strong>{p.exercise}</strong>
+                  <span className="progress-value">
+                    {p.latest.value} {p.latest.unit}
+                  </span>
+                  <span className="muted">
+                    {p.previous
+                      ? `${p.latest.value > p.previous.value ? 'up' : 'down'} from ${p.previous.value} ${p.previous.unit} · ${relativeDay(p.latest.at, now).toLowerCase()}`
+                      : `first logged ${relativeDay(p.latest.at, now).toLowerCase()}`}
+                  </span>
+                </>
+              );
+              const open = openChart === p.exercise;
+              return (
+                <li key={p.exercise} className={open ? 'open' : undefined}>
+                  {p.points.length > 1 ? (
+                    <button
+                      className="progress-row"
+                      aria-expanded={open}
+                      onClick={() => setOpenChart(open ? null : p.exercise)}
+                    >
+                      {summary}
+                    </button>
+                  ) : (
+                    <div className="progress-row">{summary}</div>
+                  )}
+                  {open && <WeightChart exercise={p.exercise} unit={p.latest.unit} points={p.points} />}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

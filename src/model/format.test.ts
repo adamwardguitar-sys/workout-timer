@@ -22,7 +22,7 @@ describe('MODE_LABELS', () => {
   });
 });
 
-import { dateLabel, formatDuration, relativeDay } from './format';
+import { dateLabel, formatDuration, relativeDay, shortDate } from './format';
 
 describe('formatDuration', () => {
   it.each([
@@ -53,5 +53,12 @@ describe('dateLabel', () => {
   it('formats a YYYY-MM-DD key as weekday, day and month', () => {
     expect(dateLabel('2026-11-20')).toBe('Fri 20 Nov');
     expect(dateLabel('2026-01-05')).toBe('Mon 5 Jan');
+  });
+});
+
+describe('shortDate', () => {
+  it('formats a timestamp as day and month', () => {
+    expect(shortDate(new Date(2026, 10, 2, 9).getTime())).toBe('2 Nov');
+    expect(shortDate(new Date(2026, 0, 15, 23).getTime())).toBe('15 Jan');
   });
 });
