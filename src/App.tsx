@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Route } from './route';
+import { Library } from './screens/Library';
 
 export type { Route } from './route';
 
@@ -10,9 +11,7 @@ export function App() {
   return (
     <main className="app">
       {route.name === 'library' && (
-        <section>
-          <h1>Library</h1>
-        </section>
+        <Library navigate={navigate} />
       )}
       {route.name !== 'library' && (
         <section>

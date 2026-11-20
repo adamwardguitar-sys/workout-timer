@@ -34,3 +34,29 @@ body {
 h1 { font-size: 1.6rem; margin: 0 0 1rem; }
 
 .num { font-variant-numeric: tabular-nums; }
+
+/* ---- shared components ---- */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.screen-head { display: flex; align-items: center; justify-content: space-between; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn { border: 1px solid var(--panel-edge); background: var(--panel); border-radius: var(--radius-sm); min-width: 44px; min-height: 44px; padding: 0 14px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 700; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); }
+.btn.wide { width: 100%; margin: 0.5rem 0; }
+.card-list { list-style: none; margin: 1rem 0; padding: 0; display: grid; gap: 12px; }
+.card { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius); }
+.card.dragging { opacity: 0.8; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+.handle { background: none; border: 0; color: var(--text-dim); min-width: 36px; min-height: 44px; touch-action: none; }
+.card-main { flex: 1; min-width: 0; }
+.card-title { background: none; border: 0; padding: 0; font-size: 1.1rem; font-weight: 700; text-align: left; overflow-wrap: anywhere; }
+.card-meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--text-dim); font-size: 0.85rem; margin-top: 4px; }
+.badge { color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; }
+.card-actions { display: flex; gap: 6px; }
+.sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+.sheet { background: var(--bg-2); border: 1px solid var(--panel-edge); border-radius: var(--radius) var(--radius) 0 0; width: min(100%, 520px); padding: 16px; }
+.mode-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.mode-option { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius-sm); text-align: left; }
+.mode-option span { color: var(--text-dim); font-size: 0.85rem; }
+.empty { color: var(--text-dim); }
