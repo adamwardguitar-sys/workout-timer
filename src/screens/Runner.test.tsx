@@ -9,6 +9,7 @@ import type { Step, Workout } from '../model/types';
 import type { Sound } from '../audio/sound';
 import { loadActiveRun, saveActiveRun } from '../store/activeRun';
 import { MIGRATIONS_KEY, loadLibrary, saveLibrary } from '../store/library';
+import { loadHistory } from '../store/history';
 import { DEFAULT_SETTINGS, saveSettings } from '../store/settings';
 
 vi.mock('../hooks/useWakeLock', () => ({ useWakeLock: vi.fn() }));
@@ -245,7 +246,7 @@ describe('Runner pause, finish and AMRAP', () => {
     expect(screen.getByText('Rounds: 2')).toBeInTheDocument();
     tick(600_000);
     expect(screen.getByRole('heading', { name: 'Workout complete' })).toBeInTheDocument();
-    expect(screen.getByText('Rounds: 2')).toBeInTheDocument();
+    expect(screen.getByTestId('summary')).toHaveTextContent(/2\s*Rounds/);
   });
 });
 
@@ -372,5 +373,69 @@ describe('Runner start screen: rounds', () => {
   it('is not offered for AMRAP or Tabata, where rounds are fixed by the mode', () => {
     setup(amrap);
     expect(screen.queryByLabelText('Rounds')).not.toBeInTheDocument();
+  });
+});
+
+describe('Runner history', () => {
+  it('logs a finished workout and shows a summary', async () => {
+    const { start } = setup(quick);
+    await start();
+    tick(5_000);
+    const [logged] = loadHistory();
+    expect(loadHistory()).toHaveLength(1);
+    expect(logged).toMatchObject({
+      workoutId: 'quick',
+      workoutName: 'Intervals',
+      completed: true,
+      durationSec: 5,
+      roundsDone: 1,
+    });
+    expect(screen.getByTestId('summary')).toHaveTextContent('5s');
+    expect(screen.getByTestId('summary')).toHaveTextContent('Saved to history');
+  });
+
+  it('lets you add a note to the session', async () => {
+    const { user, start } = setup(quick);
+    await start();
+    tick(5_000);
+    await user.type(screen.getByLabelText('Note'), 'felt strong');
+    expect(loadHistory()[0].note).toBe('felt strong');
+  });
+
+  it('logs AMRAP laps', async () => {
+    const { user, start } = setup(amrap);
+    await start();
+    await user.click(screen.getByRole('button', { name: '+1 round' }));
+    await user.click(screen.getByRole('button', { name: '+1 round' }));
+    tick(600_000);
+    expect(loadHistory()[0]).toMatchObject({ laps: 2, completed: true, mode: 'amrap' });
+  });
+
+  it('ending a workout early after a minute is logged as not completed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { user, start } = setup(noPrep);
+    await start();
+    tick(60_000);
+    await user.click(screen.getByRole('button', { name: 'Quit' }));
+    expect(loadHistory()).toHaveLength(1);
+    expect(loadHistory()[0]).toMatchObject({ completed: false, durationSec: 60, roundsDone: 1 });
+  });
+
+  it('quitting within the first 30 seconds logs nothing', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { user, start } = setup(noPrep);
+    await start();
+    tick(10_000);
+    await user.click(screen.getByRole('button', { name: 'Quit' }));
+    expect(loadHistory()).toEqual([]);
+  });
+
+  it('cancelling Quit logs nothing', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { user, start } = setup(noPrep);
+    await start();
+    tick(60_000);
+    await user.click(screen.getByRole('button', { name: 'Quit' }));
+    expect(loadHistory()).toEqual([]);
   });
 });

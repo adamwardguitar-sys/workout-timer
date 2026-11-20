@@ -2,6 +2,7 @@ import { ACTIVE_RUN_KEY, clearActiveRun, loadActiveRun, saveActiveRun } from './
 import { startRun } from '../engine/runner';
 import { seedWorkouts } from './seed';
 import { memStorage, throwingStorage } from '../test/memStorage';
+import { loadHistory } from './history';
 
 const run = () => startRun(seedWorkouts()[0], 1_000);
 const quickRun = (now: number) =>
@@ -72,5 +73,17 @@ describe('activeRun store', () => {
     const paused = { ...quickRun(0), pausedAt: 1_000 };
     saveActiveRun(paused, st, 1_000);
     expect(loadActiveRun(st, 3_600_000)).not.toBeNull();
+  });
+
+  it('logs a run that finished while the app was closed, using its real end time', () => {
+    const st = memStorage();
+    saveActiveRun(quickRun(0), st, 0);
+    expect(loadActiveRun(st, 600_000)).toBeNull();
+    const logged = loadHistory(st);
+    expect(logged).toHaveLength(1);
+    expect(logged[0]).toMatchObject({ completed: true, durationSec: 5, roundsDone: 1, startedAt: 0 });
+    // loading again must not log it a second time
+    loadActiveRun(st, 700_000);
+    expect(loadHistory(st)).toHaveLength(1);
   });
 });

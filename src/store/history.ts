@@ -1,3 +1,4 @@
+import { summarize, type RunState } from '../engine/runner';
 import type { Mode } from '../model/types';
 
 /** One logged workout. Times are ms since the epoch; durations are active seconds. */
@@ -14,6 +15,9 @@ export interface Session {
   completed: boolean;
   note?: string;
 }
+
+/** Ending a workout sooner than this is treated as an accidental start and not logged. */
+export const MIN_LOGGED_SECONDS = 30;
 
 export const HISTORY_KEY = 'workout-timer:history:v1';
 export const HISTORY_CORRUPT_KEY = 'workout-timer:history:corrupt';
@@ -111,4 +115,20 @@ export function removeSession(id: string, storage: Storage | undefined = default
   const next = loadHistory(storage).filter((s) => s.id !== id);
   saveHistory(next, storage);
   return next;
+}
+
+/** The session for a run. The id is stable per run, so logging the same run twice is harmless. */
+export function sessionFromRun(run: RunState, now: number, completed: boolean = run.finished): Session {
+  const sum = summarize(run, now);
+  return {
+    id: `${run.workout.id}-${run.startedAt}`,
+    workoutId: run.workout.id,
+    workoutName: run.workout.name.trim() || 'Untitled',
+    mode: run.workout.mode,
+    startedAt: run.startedAt,
+    durationSec: sum.durationSec,
+    roundsDone: sum.roundsDone,
+    laps: sum.laps,
+    completed,
+  };
 }

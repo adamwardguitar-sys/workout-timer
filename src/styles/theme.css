@@ -145,3 +145,11 @@ h1, h2, .run-title, .run-label, .item, .card-title { overflow-wrap: anywhere; }
 .notice p { margin: 0 0 0.5rem; }
 .notice-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .start-options { display: grid; justify-items: center; gap: 6px; } .start-options .rounds-field { justify-content: center; }
+
+/* ---- finish summary ---- */
+.summary { display: grid; gap: 10px; justify-items: center; }
+.stats { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.stat { min-width: 110px; padding: 12px 16px; background: var(--panel-grad), var(--panel); border: 1px solid var(--panel-edge); box-shadow: var(--panel-shadow); border-radius: var(--radius); }
+.stat-value { font-size: 2rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.note { width: 100%; max-width: 420px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--panel-edge); border-radius: var(--radius-sm); padding: 10px; resize: vertical; }

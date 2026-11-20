@@ -1,4 +1,5 @@
 import { update, type RunState } from '../engine/runner';
+import { addSession, sessionFromRun } from './history';
 import { isWorkout } from './library';
 
 export const ACTIVE_RUN_KEY = 'workout-timer:active-run';
@@ -68,15 +69,24 @@ export function loadActiveRun(
       typeof saved.savedAt !== 'number' ||
       now - saved.savedAt > MAX_AGE_MS ||
       !isRunState(saved.state) ||
-      saved.state.finished ||
-      (saved.state.pausedAt === null && update(saved.state, now).state.finished)
+      saved.state.finished
     ) {
       clearActiveRun(storage);
       return null;
     }
     // runs saved before time tracking existed have no start time: use the current segment's start
     const st = saved.state;
-    return { ...st, startedAt: st.startedAt ?? st.segmentStart, pausedMs: st.pausedMs ?? 0 };
+    const run = { ...st, startedAt: st.startedAt ?? st.segmentStart, pausedMs: st.pausedMs ?? 0 };
+    if (run.pausedAt === null) {
+      const fast = update(run, now);
+      if (fast.state.finished) {
+        // it ran to the end while the app was closed: keep it in the history, once
+        addSession(sessionFromRun(fast.state, now), storage);
+        clearActiveRun(storage);
+        return null;
+      }
+    }
+    return run;
   } catch {
     return null;
   }

@@ -11,17 +11,19 @@ import {
   resume,
   skip,
   startRun,
+  summarize,
   update,
   type RunEvent,
   type RunState,
 } from '../engine/runner';
 import { useLibrary } from '../hooks/useLibrary';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { formatTime } from '../model/format';
+import { formatDuration, formatTime } from '../model/format';
 import { segmentsForRound, validateWorkout } from '../model/segments';
 import type { Segment } from '../model/types';
 import type { Navigate } from '../route';
 import { clearActiveRun, loadActiveRun, saveActiveRun } from '../store/activeRun';
+import { MIN_LOGGED_SECONDS, addSession, sessionFromRun, setNote } from '../store/history';
 import { loadSettings } from '../store/settings';
 
 function nextSegment(run: RunState): Segment | undefined {
@@ -53,6 +55,7 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   const [needsTap, setNeedsTap] = useState(run !== null);
   const [, setFrame] = useState(0);
   const [startError, setStartError] = useState<string | null>(null);
+  const [note, setNoteText] = useState('');
   // rounds picked on the start screen for this run only ('saved' = use the workout's own setting)
   const [roundsChoice, setRoundsChoice] = useState<number | null | 'saved'>('saved');
 
@@ -63,10 +66,15 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   }, [sound, settings]);
 
   function apply(next: RunState, events: RunEvent[] = []) {
+    const wasFinished = runRef.current?.finished ?? false;
     runRef.current = next;
     setRun(next);
-    if (next.finished) clearActiveRun();
-    else saveActiveRun(next);
+    if (next.finished) {
+      clearActiveRun();
+      if (!wasFinished) addSession(sessionFromRun(next, Date.now()));
+    } else {
+      saveActiveRun(next);
+    }
     for (const e of events) {
       const cue = cueFor(e);
       if (cue) sound.play(cue);
@@ -136,7 +144,12 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   }
 
   function quit() {
-    if (window.confirm('Quit this workout?')) {
+    if (window.confirm('End this workout? Your progress so far is saved to your history.')) {
+      const cur = runRef.current;
+      if (cur && !cur.finished) {
+        const session = sessionFromRun(cur, Date.now(), false);
+        if (session.durationSec >= MIN_LOGGED_SECONDS) addSession(session);
+      }
       clearActiveRun();
       navigate({ name: 'library' });
     }
@@ -196,11 +209,45 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
 
   // ---- finished ----
   if (run.finished) {
+    const sum = summarize(run, Date.now());
+    const sessionId = `${run.workout.id}-${run.startedAt}`;
     return (
       <section className="screen run-done">
         <h1>Workout complete</h1>
         <p className="muted">{workout.name.trim() || 'Untitled'}</p>
-        {run.laps > 0 && <p className="big">Rounds: {run.laps}</p>}
+        <div className="summary" data-testid="summary">
+          <div className="stats">
+            <div className="stat">
+              <div className="stat-value">{formatDuration(sum.durationSec)}</div>
+              <div className="stat-label">Time</div>
+            </div>
+            {sum.laps > 0 ? (
+              <div className="stat">
+                <div className="stat-value">{sum.laps}</div>
+                <div className="stat-label">Rounds</div>
+              </div>
+            ) : (
+              sum.roundsDone > 0 && (
+                <div className="stat">
+                  <div className="stat-value">{sum.roundsDone}</div>
+                  <div className="stat-label">{sum.roundsDone === 1 ? 'Round' : 'Rounds'}</div>
+                </div>
+              )
+            )}
+          </div>
+          <p className="muted">Saved to history ✓</p>
+          <textarea
+            className="note"
+            aria-label="Note"
+            placeholder="Add a note (weights, how it felt…)"
+            rows={2}
+            value={note}
+            onChange={(e) => {
+              setNoteText(e.target.value);
+              setNote(sessionId, e.target.value);
+            }}
+          />
+        </div>
         <button className="btn primary huge" onClick={() => navigate({ name: 'library' })}>
           Back to library
         </button>
