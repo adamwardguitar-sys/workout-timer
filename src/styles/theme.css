@@ -11,7 +11,7 @@
   --accent-ink: #04201b;
   --text: #ffffff;
   --text-dim: #aab4ba;
-  --rest: #5aa9ff;
+  --rest: #ff5c5c;
   --danger: #ff6b6b;
   --radius: 16px;
   --radius-sm: 10px;
@@ -108,7 +108,7 @@ input[type='checkbox'], input[type='radio'] { min-height: 0; width: 20px; height
 .run-label { font-size: clamp(1.6rem, 6vw, 2.4rem); font-weight: 800; overflow-wrap: anywhere; }
 .clock { font-size: clamp(4.5rem, 24vw, 10rem); font-weight: 800; line-height: 1; letter-spacing: -0.02em; text-shadow: 0 2px 24px rgba(255, 255, 255, 0.12); }
 .run-work .clock, .run-work .run-label { color: var(--accent); text-shadow: 0 0 32px rgba(46, 230, 197, 0.35); }
-.run-rest .clock, .run-rest .run-label { color: var(--rest); text-shadow: 0 0 32px rgba(90, 169, 255, 0.3); }
+.run-rest .clock, .run-rest .run-label { color: var(--rest); text-shadow: 0 0 32px rgba(255, 92, 92, 0.32); }
 .items { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 420px; display: grid; gap: 6px; text-align: left; }
 .item { padding: 10px 14px; background: var(--panel-grad), var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius-sm); font-size: 1.15rem; overflow-wrap: anywhere; }
 .item[aria-current='step'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); font-weight: 700; }
