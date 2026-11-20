@@ -167,3 +167,38 @@ describe('Editor validation and leaving', () => {
     expect(saved().name).toBe('Untitled');
   });
 });
+
+describe('Editor Tabata lock', () => {
+  it('locks times, rounds and the step list, but not the name or get-ready', () => {
+    setup(templateFor('tabata'));
+    expect(screen.getByLabelText('Step 1 time seconds')).toBeDisabled();
+    expect(screen.getByLabelText('Step 2 time seconds')).toBeDisabled();
+    expect(screen.getByLabelText('Rounds')).toBeDisabled();
+    expect(screen.getByLabelText('Until I stop')).toBeDisabled();
+    expect(screen.getByLabelText('Rest between rounds seconds')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add step' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Remove step 1' })).toBeDisabled();
+    expect(screen.getByLabelText('Step 1 type')).toBeDisabled();
+    expect(screen.getByLabelText('Step 1 role')).toBeDisabled();
+    expect(screen.getByLabelText('Name')).toBeEnabled();
+    expect(screen.getByLabelText('Get ready seconds')).toBeEnabled();
+    expect(screen.getByText(/Tabata is fixed at 20s on, 10s off, 8 rounds/)).toBeInTheDocument();
+  });
+
+  it('Convert to Custom unlocks everything and changes the mode', async () => {
+    const { user, saved } = setup(templateFor('tabata'));
+    await user.click(screen.getByRole('button', { name: 'Convert to Custom' }));
+    expect(saved().mode).toBe('custom');
+    expect(saved().steps.map((s) => s.seconds)).toEqual([20, 10]);
+    expect(screen.getByLabelText('Step 1 time seconds')).toBeEnabled();
+    expect(screen.getByLabelText('Rounds')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Add step' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Convert to Custom' })).not.toBeInTheDocument();
+  });
+
+  it('other modes are not locked and have no Convert button', () => {
+    setup(templateFor('interval'));
+    expect(screen.getByLabelText('Step 1 time seconds')).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Convert to Custom' })).not.toBeInTheDocument();
+  });
+});

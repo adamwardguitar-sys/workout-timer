@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Library } from './Library';
-import { loadLibrary, saveLibrary } from '../store/library';
+import { LIBRARY_KEY, listCorrupt, loadLibrary, saveLibrary } from '../store/library';
 import { seedWorkouts } from '../store/seed';
 import { saveActiveRun } from '../store/activeRun';
 import { startRun } from '../engine/runner';
@@ -132,5 +132,44 @@ describe('Library', () => {
     saveActiveRun(startRun(w, Date.now() - 60_000));
     setup();
     expect(screen.queryByRole('button', { name: /Resume workout/ })).not.toBeInTheDocument();
+  });
+
+  describe('unreadable data notice', () => {
+    it('is not shown when everything loaded fine', () => {
+      setup();
+      expect(screen.queryByText(/could not be read/)).not.toBeInTheDocument();
+    });
+
+    it('tells you some saved workouts could not be read, and offers the data back', async () => {
+      localStorage.setItem(LIBRARY_KEY, JSON.stringify([seedWorkouts()[0], { id: 'broken' }]));
+      let blob: Blob | undefined;
+      URL.createObjectURL = vi.fn((b: Blob | MediaSource) => {
+        blob = b as Blob;
+        return 'blob:x';
+      });
+      URL.revokeObjectURL = vi.fn();
+      const clicks: string[] = [];
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        clicks.push(this.download);
+      });
+      const { user } = setup();
+      expect(screen.getByText(/could not be read/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Download unreadable data' }));
+      expect(clicks).toEqual(['workout-timer-unreadable-data.json']);
+      expect(await blob!.text()).toContain('broken');
+    });
+
+    it('Dismiss asks first, then forgets the unreadable copy', async () => {
+      localStorage.setItem(LIBRARY_KEY, '{bad');
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+      const { user } = setup();
+      await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+      expect(screen.getByText(/could not be read/)).toBeInTheDocument();
+      expect(listCorrupt()).toHaveLength(1);
+      await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+      expect(confirm).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText(/could not be read/)).not.toBeInTheDocument();
+      expect(listCorrupt()).toEqual([]);
+    });
   });
 });

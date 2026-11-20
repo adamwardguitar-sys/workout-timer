@@ -55,6 +55,44 @@ export function saveLibrary(ws: Workout[], storage: Storage | undefined = defaul
   }
 }
 
+export interface CorruptEntry {
+  savedAt: number;
+  raw: string;
+}
+
+const MAX_CORRUPT = 5;
+
+/** Unreadable library data we set aside instead of throwing away, oldest first. */
+export function listCorrupt(storage: Storage | undefined = defaultStorage()): CorruptEntry[] {
+  try {
+    const parsed: unknown = JSON.parse(storage?.getItem(CORRUPT_KEY) ?? '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e): e is CorruptEntry =>
+        typeof e === 'object' && e !== null && typeof e.savedAt === 'number' && typeof e.raw === 'string',
+    );
+  } catch {
+    return [];
+  }
+}
+
+function addCorrupt(raw: string, storage: Storage | undefined): void {
+  try {
+    const next = [...listCorrupt(storage), { savedAt: Date.now(), raw }].slice(-MAX_CORRUPT);
+    storage?.setItem(CORRUPT_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearCorrupt(storage: Storage | undefined = defaultStorage()): void {
+  try {
+    storage?.removeItem(CORRUPT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function loadLibrary(storage: Storage | undefined = defaultStorage()): Workout[] {
   let raw: string | null = null;
   try {
@@ -69,15 +107,20 @@ export function loadLibrary(storage: Storage | undefined = defaultStorage()): Wo
   }
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.every(isWorkout)) return parsed;
+    if (Array.isArray(parsed)) {
+      const valid = parsed.filter(isWorkout);
+      if (valid.length === parsed.length) return valid;
+      if (valid.length > 0) {
+        // keep what is readable, set the rest aside so nothing is silently lost
+        addCorrupt(raw, storage);
+        saveLibrary(valid, storage);
+        return valid;
+      }
+    }
   } catch {
-    /* fall through to the corrupt path */
+    /* fall through to the unreadable path */
   }
-  try {
-    storage?.setItem(CORRUPT_KEY, raw);
-  } catch {
-    /* ignore */
-  }
+  addCorrupt(raw, storage);
   const seeds = seedWorkouts();
   saveLibrary(seeds, storage);
   return seeds;

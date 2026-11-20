@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLibrary } from '../hooks/useLibrary';
 import type { Navigate } from '../route';
+import { saveTextFile } from '../util/download';
 import { exportLibrary, parseImport } from '../store/library';
 import { loadSettings, saveSettings, type Settings as SettingsData } from '../store/settings';
 
@@ -18,15 +19,7 @@ export function Settings({ navigate }: { navigate: Navigate }) {
   };
 
   function exportBackup() {
-    const blob = new Blob([exportLibrary(lib.workouts)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'workout-timer-backup.json';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    void saveTextFile('workout-timer-backup.json', exportLibrary(lib.workouts));
   }
 
   async function importBackup(file: File | undefined) {

@@ -27,8 +27,8 @@ const toInt = (v: string) => {
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
-function TimeField(props: { label: string; seconds: number; onChange: (seconds: number) => void }) {
-  const { label, seconds, onChange } = props;
+function TimeField(props: { label: string; seconds: number; onChange: (seconds: number) => void; disabled?: boolean }) {
+  const { label, seconds, onChange, disabled } = props;
   const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
   const m = Math.floor(safe / 60);
   const s = Math.floor(safe % 60);
@@ -40,6 +40,7 @@ function TimeField(props: { label: string; seconds: number; onChange: (seconds: 
         inputMode="numeric"
         min={0}
         aria-label={`${label} minutes`}
+        disabled={disabled}
         value={m}
         onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => onChange(toInt(e.target.value) * 60 + s)}
@@ -50,6 +51,7 @@ function TimeField(props: { label: string; seconds: number; onChange: (seconds: 
         inputMode="numeric"
         min={0}
         aria-label={`${label} seconds`}
+        disabled={disabled}
         value={String(s).padStart(2, '0')}
         onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => onChange(m * 60 + toInt(e.target.value))}
@@ -62,12 +64,16 @@ interface RowProps {
   step: Step;
   n: number;
   amrap: boolean;
+  locked: boolean;
   onChange: (s: Step) => void;
   onRemove: () => void;
 }
 
-function StepRow({ step, n, amrap, onChange, onRemove }: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id });
+function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: step.id,
+    disabled: locked,
+  });
   const set = (patch: Partial<Step>) => onChange({ ...step, ...patch });
   return (
     <li
@@ -76,7 +82,7 @@ function StepRow({ step, n, amrap, onChange, onRemove }: RowProps) {
       className={`step-row${isDragging ? ' dragging' : ''}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <button className="handle" aria-label={`Reorder step ${n}`} {...attributes} {...listeners}>
+      <button className="handle" aria-label={`Reorder step ${n}`} disabled={locked} {...attributes} {...listeners}>
         ⠿
       </button>
       <div className="step-fields">
@@ -90,6 +96,7 @@ function StepRow({ step, n, amrap, onChange, onRemove }: RowProps) {
         <div className="step-options">
           <select
             aria-label={`Step ${n} type`}
+            disabled={locked}
             value={step.kind}
             onChange={(e) =>
               e.target.value === 'tap'
@@ -102,6 +109,7 @@ function StepRow({ step, n, amrap, onChange, onRemove }: RowProps) {
           </select>
           <select
             aria-label={`Step ${n} role`}
+            disabled={locked}
             value={step.role}
             onChange={(e) => set({ role: e.target.value as Step['role'] })}
           >
@@ -109,7 +117,12 @@ function StepRow({ step, n, amrap, onChange, onRemove }: RowProps) {
             <option value="rest">Rest</option>
           </select>
           {step.kind === 'timed' && (
-            <TimeField label={`Step ${n} time`} seconds={step.seconds ?? 0} onChange={(seconds) => set({ seconds })} />
+            <TimeField
+              label={`Step ${n} time`}
+              seconds={step.seconds ?? 0}
+              disabled={locked}
+              onChange={(seconds) => set({ seconds })}
+            />
           )}
           {step.kind === 'tap' && step.role === 'work' && (
             <input
@@ -136,7 +149,7 @@ function StepRow({ step, n, amrap, onChange, onRemove }: RowProps) {
           )}
         </div>
       </div>
-      <button className="btn ghost danger" onClick={onRemove}>
+      <button className="btn ghost danger" onClick={onRemove} disabled={locked}>
         <span aria-hidden>✕</span>
         <span className="sr-only">Remove step {n}</span>
       </button>
@@ -167,6 +180,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
   const setStep = (s: Step) => update({ steps: w.steps.map((x) => (x.id === s.id ? s : x)) });
   const errors = validateWorkout(w);
   const hasTap = w.steps.some((s) => s.kind === 'tap');
+  const locked = w.mode === 'tabata';
 
   const nameFix = () => {
     if (!w.name.trim()) update({ name: 'Untitled' });
@@ -177,7 +191,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
   };
 
   function onDragEnd(e: DragEndEvent) {
-    if (!e.over || e.active.id === e.over.id) return;
+    if (locked || !e.over || e.active.id === e.over.id) return;
     const from = w!.steps.findIndex((s) => s.id === e.active.id);
     const to = w!.steps.findIndex((s) => s.id === e.over!.id);
     update({ steps: arrayMove(w!.steps, from, to) });
@@ -205,6 +219,15 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
         </button>
       </header>
 
+      {locked && (
+        <div className="notice">
+          <p>Tabata is fixed at 20s on, 10s off, 8 rounds. Convert to Custom to change it.</p>
+          <button className="btn" onClick={() => update({ mode: 'custom' })}>
+            Convert to Custom
+          </button>
+        </div>
+      )}
+
       <label className="field">
         <span className="field-label">Name</span>
         <input value={w.name} onChange={(e) => update({ name: e.target.value })} onBlur={nameFix} />
@@ -215,6 +238,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
         <TimeField
           label="Rest between rounds"
           seconds={w.restBetweenRounds}
+          disabled={locked}
           onChange={(restBetweenRounds) => update({ restBetweenRounds })}
         />
         <div className="rounds-field">
@@ -224,7 +248,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
             inputMode="numeric"
             min={1}
             aria-label="Rounds"
-            disabled={w.rounds === null}
+            disabled={w.rounds === null || locked}
             value={w.rounds ?? ''}
             onChange={(e) => update({ rounds: toInt(e.target.value) })}
           />
@@ -232,6 +256,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
             <input
               type="checkbox"
               aria-label="Until I stop"
+              disabled={locked}
               checked={w.rounds === null}
               onChange={(e) => update({ rounds: e.target.checked ? null : 3 })}
             />
@@ -275,6 +300,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
                 step={s}
                 n={i + 1}
                 amrap={w.mode === 'amrap'}
+                locked={locked}
                 onChange={setStep}
                 onRemove={() => update({ steps: w.steps.filter((x) => x.id !== s.id) })}
               />
@@ -282,7 +308,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
           </ol>
         </SortableContext>
       </DndContext>
-      <button className="btn wide" onClick={addStep}>
+      <button className="btn wide" onClick={addStep} disabled={locked}>
         Add step
       </button>
 

@@ -140,3 +140,7 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
 h1, h2, .run-title, .run-label, .item, .card-title { overflow-wrap: anywhere; }
 .run-title { min-width: 0; flex: 1; }
 .run-main, .run-main > *, .run-start > *, .run-done > *, .items { min-width: 0; max-width: 100%; }
+
+.notice { background: var(--panel-grad), var(--panel); border: 1px solid var(--accent); border-radius: var(--radius); padding: 12px; margin: 0.75rem 0; }
+.notice p { margin: 0 0 0.5rem; }
+.notice-actions { display: flex; gap: 8px; flex-wrap: wrap; }

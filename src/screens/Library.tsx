@@ -20,6 +20,8 @@ import { MODE_BLURBS, MODE_LABELS, formatTime } from '../model/format';
 import { validateWorkout } from '../model/segments';
 import { templateFor } from '../model/templates';
 import { loadActiveRun } from '../store/activeRun';
+import { clearCorrupt, listCorrupt } from '../store/library';
+import { saveTextFile } from '../util/download';
 import type { Mode, Workout } from '../model/types';
 import type { Navigate } from '../route';
 
@@ -85,6 +87,7 @@ export function Library({ navigate }: { navigate: Navigate }) {
   const lib = useLibrary();
   const [picking, setPicking] = useState(false);
   const [savedRun] = useState(() => loadActiveRun());
+  const [corrupt, setCorrupt] = useState(() => listCorrupt());
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -104,6 +107,20 @@ export function Library({ navigate }: { navigate: Navigate }) {
     navigate({ name: 'editor', id: w.id });
   }
 
+  function downloadUnreadable() {
+    void saveTextFile(
+      'workout-timer-unreadable-data.json',
+      JSON.stringify({ app: 'workout-timer-unreadable', entries: corrupt }, null, 2),
+    );
+  }
+
+  function dismissUnreadable() {
+    if (window.confirm('Forget the unreadable data? Download it first if you want to keep it.')) {
+      clearCorrupt();
+      setCorrupt([]);
+    }
+  }
+
   function confirmDelete(w: Workout) {
     if (window.confirm(`Delete "${w.name.trim() || 'Untitled'}"? This can't be undone.`)) lib.remove(w.id);
   }
@@ -117,6 +134,20 @@ export function Library({ navigate }: { navigate: Navigate }) {
           <span className="sr-only">Settings</span>
         </button>
       </header>
+
+      {corrupt.length > 0 && (
+        <div className="notice" role="status">
+          <p>Some saved workouts could not be read. A copy of the unreadable data has been kept.</p>
+          <div className="notice-actions">
+            <button className="btn" onClick={downloadUnreadable}>
+              Download unreadable data
+            </button>
+            <button className="btn ghost" onClick={dismissUnreadable}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {savedRun && (
         <button className="btn resume wide" onClick={() => navigate({ name: 'run', id: savedRun.workout.id })}>

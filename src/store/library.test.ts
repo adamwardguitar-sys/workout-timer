@@ -1,7 +1,8 @@
 import {
-  CORRUPT_KEY,
   LIBRARY_KEY,
+  clearCorrupt,
   exportLibrary,
+  listCorrupt,
   loadLibrary,
   mergeImport,
   parseImport,
@@ -102,16 +103,50 @@ describe('loadLibrary / saveLibrary', () => {
 
   it('corrupt JSON returns the seeds and keeps a copy of the raw data', () => {
     const st = memStorage({ [LIBRARY_KEY]: '{not json' });
-    const ws = loadLibrary(st);
-    expect(ws).toHaveLength(3);
-    expect(st.getItem(CORRUPT_KEY)).toBe('{not json');
+    expect(loadLibrary(st)).toHaveLength(3);
+    expect(listCorrupt(st).map((e) => e.raw)).toEqual(['{not json']);
   });
 
-  it('a wrong-shape array is treated as corrupt', () => {
+  it('an array where nothing is readable returns the seeds and keeps the raw data', () => {
     const raw = JSON.stringify([{ id: 'x', name: 'No steps' }]);
     const st = memStorage({ [LIBRARY_KEY]: raw });
     expect(loadLibrary(st)).toHaveLength(3);
-    expect(st.getItem(CORRUPT_KEY)).toBe(raw);
+    expect(listCorrupt(st).map((e) => e.raw)).toEqual([raw]);
+  });
+
+  it('keeps the readable workouts when only some are damaged, and sets the damaged data aside', () => {
+    const good = seedWorkouts()[0];
+    const raw = JSON.stringify([good, { id: 'broken' }, seedWorkouts()[1]]);
+    const st = memStorage({ [LIBRARY_KEY]: raw });
+    const ws = loadLibrary(st);
+    expect(ws.map((w) => w.name)).toEqual(['Full Body A', 'Full Body B']);
+    expect(listCorrupt(st).map((e) => e.raw)).toEqual([raw]);
+    expect(loadLibrary(st)).toEqual(ws); // and it is stable on the next load
+    expect(listCorrupt(st)).toHaveLength(1);
+  });
+
+  it('a second corruption does not overwrite the first copy', () => {
+    const st = memStorage({ [LIBRARY_KEY]: '{first' });
+    loadLibrary(st);
+    st.setItem(LIBRARY_KEY, '{second');
+    loadLibrary(st);
+    expect(listCorrupt(st).map((e) => e.raw)).toEqual(['{first', '{second']);
+  });
+
+  it('keeps at most the 5 most recent unreadable copies', () => {
+    const st = memStorage();
+    for (let i = 1; i <= 7; i++) {
+      st.setItem(LIBRARY_KEY, `{bad${i}`);
+      loadLibrary(st);
+    }
+    expect(listCorrupt(st).map((e) => e.raw)).toEqual(['{bad3', '{bad4', '{bad5', '{bad6', '{bad7']);
+  });
+
+  it('clearCorrupt removes the saved copies', () => {
+    const st = memStorage({ [LIBRARY_KEY]: '{bad' });
+    loadLibrary(st);
+    clearCorrupt(st);
+    expect(listCorrupt(st)).toEqual([]);
   });
 
   it('does not throw when storage itself is unavailable', () => {
