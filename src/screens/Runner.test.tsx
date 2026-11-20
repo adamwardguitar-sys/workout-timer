@@ -114,6 +114,12 @@ describe('Runner basics', () => {
     expect(screen.getByText('Next: Rest')).toBeInTheDocument();
   });
 
+  it('does not show a round counter for a single-round workout', async () => {
+    const { start } = setup(quick);
+    await start();
+    expect(screen.queryByText(/^Round/)).not.toBeInTheDocument();
+  });
+
   it('plays the cues from the engine events', async () => {
     const { sound, start } = setup(interval);
     await start();

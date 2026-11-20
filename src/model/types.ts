@@ -19,6 +19,8 @@ export interface Workout {
   rounds: number | null;
   advance: 'step' | 'round';
   restBetweenRounds: number;
+  /** Shared rest after each exercise (timed steps, or tap steps when advance is 'step'). 0/absent = none. */
+  restBetweenSteps?: number;
 }
 
 export interface SegmentItem {

@@ -22,38 +22,51 @@ function flow(name: string, steps: Step[]): Workout {
   };
 }
 
+export const FULL_BODY_A = [
+  'Flat Bench',
+  'Reverse Lunge',
+  'Deep Press-Ups',
+  'Chin Ups',
+  'Oblique Dips',
+  'B Stance RDL',
+  'KB Shoulder Press',
+  'Goblet Squat',
+  'Bicep Curls',
+  'Calf Raises',
+];
+
+export const FULL_BODY_B = [
+  'Offset Squats',
+  'Deep Handle Push',
+  '1 Arm Rows',
+  'Reverse Lunges',
+  'Thrusters',
+  'Single RDL',
+  'KB Shoulder Press',
+  'High Pulls',
+  'Horn Curls',
+  'Weighted Crunches',
+];
+
+/** An exercise list: 40s on, 20s off through the list once. */
+function exerciseList(name: string, labels: string[]): Workout {
+  return {
+    id: newId(),
+    name,
+    mode: 'interval',
+    prepSeconds: 10,
+    steps: labels.map((label) => ({ id: newId(), label, kind: 'timed', role: 'work', seconds: 40 })),
+    rounds: 1,
+    advance: 'step',
+    restBetweenRounds: 0,
+    restBetweenSteps: 20,
+  };
+}
+
 export function seedWorkouts(): Workout[] {
   return [
-    flow(
-      'Full Body A',
-      [
-        'Flat Bench',
-        'Reverse Lunge',
-        'Deep Press-Ups',
-        'Chin Ups',
-        'Oblique Dips',
-        'B Stance RDL',
-        'KB Shoulder Press',
-        'Goblet Squat',
-        'Bicep Curls',
-        'Calf Raises',
-      ].map((l) => tap(l)),
-    ),
-    flow(
-      'Full Body B',
-      [
-        'Offset Squats',
-        'Deep Handle Push',
-        '1 Arm Rows',
-        'Reverse Lunges',
-        'Thrusters',
-        'Single RDL',
-        'KB Shoulder Press',
-        'High Pulls',
-        'Horn Curls',
-        'Weighted Crunches',
-      ].map((l) => tap(l)),
-    ),
+    exerciseList('Full Body A', FULL_BODY_A),
+    exerciseList('Full Body B', FULL_BODY_B),
     flow('Kettlebell Rounds (Athenian Complex)', [
       tap('Rows', 5),
       tap('Squats', 5),

@@ -113,13 +113,16 @@ Layout: single column on phone. On desktop it is a centred column, or library on
 
 ## Seed library (starting workouts)
 
-All three are Flow mode: tap steps, one tap per round, 2:00 rest between rounds, rounds "until I stop", get-ready 0:10. These are my defaults, editable in the app.
+*Revised 2026-11-20 after first use: Full Body A and B are 40s-on / 20s-off exercise lists, not tap-through flows.*
 
-**Full Body A:** Flat Bench, Reverse Lunge, Deep Press-Ups, Chin Ups, Oblique Dips, B Stance RDL, KB Shoulder Press, Goblet Squat, Bicep Curls, Calf Raises.
+**Full Body A** and **Full Body B** are Interval workouts: a 10s get-ready, then each exercise for 40s with a shared 20s rest between exercises, through the list once (`rounds` 1, `restBetweenSteps` 20; editable in the app).
 
-**Full Body B:** Offset Squats, Deep Handle Push, 1 Arm Rows, Reverse Lunges, Thrusters, Single RDL, KB Shoulder Press, High Pulls, Horn Curls, Weighted Crunches.
+- Full Body A: Flat Bench, Reverse Lunge, Deep Press-Ups, Chin Ups, Oblique Dips, B Stance RDL, KB Shoulder Press, Goblet Squat, Bicep Curls, Calf Raises.
+- Full Body B: Offset Squats, Deep Handle Push, 1 Arm Rows, Reverse Lunges, Thrusters, Single RDL, KB Shoulder Press, High Pulls, Horn Curls, Weighted Crunches.
 
-**Kettlebell Rounds (Athenian Complex):** 5 Rows, 5 Squats, 5 Cleans, 5 Swings, 5 High Pulls, 5 Snatches, 5 Thrusters, 5 Push Presses, 10 Press Ups. Flow mode, 2:00 rest, repeat until stopped.
+**Kettlebell Rounds (Athenian Complex)** is a Flow workout: 5 Rows, 5 Squats, 5 Cleans, 5 Swings, 5 High Pulls, 5 Snatches, 5 Thrusters, 5 Push Presses, 10 Press Ups. Tap once per round, 2:00 rest, repeat until stopped, 10s get-ready.
+
+The model gained an optional `restBetweenSteps` (shared rest after each exercise). The Interval template is now a 3-exercise list (40s on, 20s rest, 3 rounds). Saved copies of the original tap-through Full Body A/B are converted automatically if untouched.
 
 ## Tech choices (my calls)
 

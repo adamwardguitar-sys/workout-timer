@@ -235,6 +235,13 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
 
       <div className="settings-grid">
         <TimeField label="Get ready" seconds={w.prepSeconds} onChange={(prepSeconds) => update({ prepSeconds })} />
+        {(w.mode === 'interval' || w.mode === 'custom') && (
+          <TimeField
+            label="Rest after each exercise"
+            seconds={w.restBetweenSteps ?? 0}
+            onChange={(restBetweenSteps) => update({ restBetweenSteps })}
+          />
+        )}
         <TimeField
           label="Rest between rounds"
           seconds={w.restBetweenRounds}

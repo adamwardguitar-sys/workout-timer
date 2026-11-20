@@ -41,7 +41,7 @@ describe('Editor basics', () => {
   });
 
   it('Until I stop toggles rounds between null and a number', async () => {
-    const { user, saved } = setup(seedWorkouts()[0]);
+    const { user, saved } = setup(seedWorkouts()[2]);
     const until = screen.getByLabelText('Until I stop');
     expect(until).toBeChecked();
     await user.click(until);
@@ -53,7 +53,7 @@ describe('Editor basics', () => {
   });
 
   it('switches between tap per exercise and tap once per round', async () => {
-    const { user, saved } = setup(seedWorkouts()[0]);
+    const { user, saved } = setup(seedWorkouts()[2]);
     expect(screen.getByLabelText('Tap once per round')).toBeChecked();
     await user.click(screen.getByLabelText('Tap per exercise'));
     expect(saved().advance).toBe('step');
@@ -165,6 +165,20 @@ describe('Editor validation and leaving', () => {
     await user.clear(name);
     await user.tab();
     expect(saved().name).toBe('Untitled');
+  });
+});
+
+describe('Editor rest after each exercise', () => {
+  it('interval workouts can set the shared rest between exercises', () => {
+    const { saved } = setup(templateFor('interval'));
+    num('Rest after each exercise minutes', 0);
+    num('Rest after each exercise seconds', 30);
+    expect(saved().restBetweenSteps).toBe(30);
+  });
+
+  it('is not shown for flow workouts', () => {
+    setup(seedWorkouts()[2]);
+    expect(screen.queryByLabelText('Rest after each exercise seconds')).not.toBeInTheDocument();
   });
 });
 

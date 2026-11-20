@@ -1,7 +1,7 @@
 import { newId } from '../model/id';
 import { validateWorkout } from '../model/segments';
 import type { Workout } from '../model/types';
-import { seedWorkouts } from './seed';
+import { FULL_BODY_A, FULL_BODY_B, seedWorkouts } from './seed';
 
 export const LIBRARY_KEY = 'workout-timer:library:v1';
 export const CORRUPT_KEY = 'workout-timer:library:corrupt';
@@ -35,7 +35,8 @@ export function isWorkout(x: unknown): x is Workout {
     w.steps.every(isStep) &&
     (w.rounds === null || typeof w.rounds === 'number') &&
     (w.advance === 'step' || w.advance === 'round') &&
-    typeof w.restBetweenRounds === 'number'
+    typeof w.restBetweenRounds === 'number' &&
+    optNum(w.restBetweenSteps)
   );
 }
 
@@ -53,6 +54,41 @@ export function saveLibrary(ws: Workout[], storage: Storage | undefined = defaul
   } catch {
     /* storage full or unavailable: keep running with in-memory state */
   }
+}
+
+/**
+ * Full Body A/B first shipped as tap-through flows. They are 40s on / 20s off lists, so an
+ * untouched copy of the old version is replaced in place (same id and position); anything
+ * you have edited is left exactly as it is.
+ */
+const OLD_FLOW_SEEDS: Record<string, string[]> = { 'Full Body A': FULL_BODY_A, 'Full Body B': FULL_BODY_B };
+
+function isUntouchedOldFlowSeed(w: Workout): boolean {
+  const labels = OLD_FLOW_SEEDS[w.name];
+  return (
+    labels !== undefined &&
+    w.mode === 'flow' &&
+    w.prepSeconds === 10 &&
+    w.rounds === null &&
+    w.advance === 'round' &&
+    w.restBetweenRounds === 120 &&
+    w.restBetweenSteps === undefined &&
+    w.steps.length === labels.length &&
+    w.steps.every((s, i) => s.kind === 'tap' && s.role === 'work' && s.reps === undefined && s.label === labels[i])
+  );
+}
+
+function migrateOldSeeds(ws: Workout[]): { workouts: Workout[]; changed: boolean } {
+  let changed = false;
+  const fresh = seedWorkouts();
+  const workouts = ws.map((w) => {
+    if (!isUntouchedOldFlowSeed(w)) return w;
+    const replacement = fresh.find((f) => f.name === w.name);
+    if (!replacement) return w;
+    changed = true;
+    return { ...replacement, id: w.id };
+  });
+  return { workouts, changed };
 }
 
 export interface CorruptEntry {
@@ -109,12 +145,17 @@ export function loadLibrary(storage: Storage | undefined = defaultStorage()): Wo
     const parsed: unknown = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       const valid = parsed.filter(isWorkout);
-      if (valid.length === parsed.length) return valid;
+      if (valid.length === parsed.length) {
+        const m = migrateOldSeeds(valid);
+        if (m.changed) saveLibrary(m.workouts, storage);
+        return m.workouts;
+      }
       if (valid.length > 0) {
         // keep what is readable, set the rest aside so nothing is silently lost
         addCorrupt(raw, storage);
-        saveLibrary(valid, storage);
-        return valid;
+        const m = migrateOldSeeds(valid);
+        saveLibrary(m.workouts, storage);
+        return m.workouts;
       }
     }
   } catch {

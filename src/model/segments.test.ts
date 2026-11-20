@@ -136,3 +136,65 @@ describe('validateWorkout', () => {
     expect(validateWorkout(wk({ steps: [tap('A')], restBetweenRounds: -5 })).length).toBeGreaterThan(0);
   });
 });
+
+describe('restBetweenSteps (exercise list with a shared rest)', () => {
+  const list = (over: Partial<Workout> = {}) =>
+    wk({ steps: [timed('A', 40), timed('B', 40), timed('C', 40)], restBetweenSteps: 20, rounds: 1, ...over });
+  const shape = (segs: ReturnType<typeof segmentsForRound>) => segs.map((x) => [x.label, x.role, x.seconds]);
+
+  it('adds a rest after each exercise except the last of the final round', () => {
+    expect(shape(segmentsForRound(list(), 1))).toEqual([
+      ['A', 'work', 40],
+      ['Rest', 'rest', 20],
+      ['B', 'work', 40],
+      ['Rest', 'rest', 20],
+      ['C', 'work', 40],
+    ]);
+  });
+
+  it('rests after the last exercise too when another round follows', () => {
+    const w = list({ rounds: 2 });
+    expect(segmentsForRound(w, 1).at(-1)).toMatchObject({ role: 'rest', seconds: 20 });
+    expect(segmentsForRound(w, 2).at(-1)).toMatchObject({ label: 'C', role: 'work' });
+  });
+
+  it('a rest between rounds replaces the last exercise rest rather than adding to it', () => {
+    const segs = segmentsForRound(list({ rounds: 2, restBetweenRounds: 60 }), 1);
+    expect(segs.slice(-2).map((x) => [x.role, x.seconds])).toEqual([
+      ['work', 40],
+      ['rest', 60],
+    ]);
+  });
+
+  it('runs a Rest segment after every exercise forever when rounds is null', () => {
+    expect(segmentsForRound(list({ rounds: null }), 9).at(-1)).toMatchObject({ role: 'rest', seconds: 20 });
+  });
+
+  it('adds nothing when it is 0 or missing', () => {
+    expect(segmentsForRound(list({ restBetweenSteps: 0 }), 1)).toHaveLength(3);
+    expect(segmentsForRound(list({ restBetweenSteps: undefined }), 1)).toHaveLength(3);
+  });
+
+  it('does not double up when the next step is already a rest step', () => {
+    const w = wk({ steps: [timed('A', 40), timed('Break', 15, 'rest'), timed('B', 40)], restBetweenSteps: 20, rounds: 1 });
+    expect(shape(segmentsForRound(w, 1))).toEqual([
+      ['A', 'work', 40],
+      ['Break', 'rest', 15],
+      ['B', 'work', 40],
+    ]);
+  });
+
+  it('gives tap-per-exercise steps a rest, but not the merged tap-once-per-round segment', () => {
+    const taps = [tap('A'), tap('B')];
+    expect(shape(segmentsForRound(wk({ steps: taps, advance: 'step', restBetweenSteps: 20, rounds: 1 }), 1))).toEqual([
+      ['A', 'work', null],
+      ['Rest', 'rest', 20],
+      ['B', 'work', null],
+    ]);
+    expect(segmentsForRound(wk({ steps: taps, advance: 'round', restBetweenSteps: 20, rounds: 1 }), 1)).toHaveLength(1);
+  });
+
+  it('is rejected by validateWorkout when negative', () => {
+    expect(validateWorkout(list({ restBetweenSteps: -5 })).length).toBeGreaterThan(0);
+  });
+});

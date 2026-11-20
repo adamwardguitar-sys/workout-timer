@@ -184,7 +184,7 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   const next = nextSegment(run);
   const paused = run.pausedAt !== null;
   const roundLabel =
-    seg.counter || seg.round === 0
+    seg.counter || seg.round === 0 || workout.rounds === 1
       ? null
       : workout.rounds === null
         ? `Round ${seg.round}`

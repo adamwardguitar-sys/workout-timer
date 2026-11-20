@@ -8,7 +8,8 @@ import {
   parseImport,
   saveLibrary,
 } from './library';
-import { seedWorkouts } from './seed';
+import { FULL_BODY_A, FULL_BODY_B, seedWorkouts } from './seed';
+import type { Workout } from '../model/types';
 import { validateWorkout } from '../model/segments';
 import { memStorage, throwingStorage } from '../test/memStorage';
 
@@ -21,18 +22,21 @@ describe('seedWorkouts', () => {
     ]);
   });
 
-  it('are all flow workouts: tap steps, 10s get ready, 2:00 rest, until I stop', () => {
-    for (const w of seedWorkouts()) {
-      expect(w).toMatchObject({
-        mode: 'flow',
-        prepSeconds: 10,
-        restBetweenRounds: 120,
-        rounds: null,
-        advance: 'round',
-      });
-      expect(w.steps.every((s) => s.kind === 'tap' && s.role === 'work')).toBe(true);
+  it('Full Body A and B run 40s on / 20s off through the list, once, after a 10s get ready', () => {
+    const [a, b] = seedWorkouts();
+    for (const w of [a, b]) {
+      expect(w).toMatchObject({ mode: 'interval', prepSeconds: 10, rounds: 1, restBetweenSteps: 20 });
+      expect(w.steps).toHaveLength(10);
+      expect(w.steps.every((x) => x.kind === 'timed' && x.role === 'work' && x.seconds === 40)).toBe(true);
       expect(validateWorkout(w)).toEqual([]);
     }
+  });
+
+  it('the Athenian Complex is a flow: tap once per round, 2:00 rest, until I stop', () => {
+    const c = seedWorkouts()[2];
+    expect(c).toMatchObject({ mode: 'flow', prepSeconds: 10, rounds: null, advance: 'round', restBetweenRounds: 120 });
+    expect(c.steps.every((x) => x.kind === 'tap' && x.role === 'work')).toBe(true);
+    expect(validateWorkout(c)).toEqual([]);
   });
 
   it('Full Body A and B have the exercises from the screenshots', () => {
@@ -77,6 +81,63 @@ describe('seedWorkouts', () => {
       'Press Ups',
     ]);
     expect(c.steps.map((s) => s.reps)).toEqual([5, 5, 5, 5, 5, 5, 5, 5, 10]);
+  });
+});
+
+const oldFlowSeed = (name: string, labels: string[], id: string): Workout => ({
+  id,
+  name,
+  mode: 'flow',
+  prepSeconds: 10,
+  rounds: null,
+  advance: 'round',
+  restBetweenRounds: 120,
+  steps: labels.map((label, i) => ({ id: `${id}-${i}`, label, kind: 'tap', role: 'work' })),
+});
+
+describe('moving untouched old Full Body seeds to 40s/20s', () => {
+  it('converts them in place, keeping id and position, and leaves other workouts alone', () => {
+    const athenian = seedWorkouts()[2];
+    const st = memStorage();
+    saveLibrary([oldFlowSeed('Full Body A', FULL_BODY_A, 'idA'), athenian, oldFlowSeed('Full Body B', FULL_BODY_B, 'idB')], st);
+    const ws = loadLibrary(st);
+    expect(ws.map((w) => [w.id, w.name, w.mode])).toEqual([
+      ['idA', 'Full Body A', 'interval'],
+      [athenian.id, 'Kettlebell Rounds (Athenian Complex)', 'flow'],
+      ['idB', 'Full Body B', 'interval'],
+    ]);
+    expect(ws[0]).toMatchObject({ rounds: 1, restBetweenSteps: 20 });
+    expect(ws[0].steps.map((x) => x.label)).toEqual(FULL_BODY_A);
+    expect(ws[1]).toEqual(athenian);
+    expect(loadLibrary(st)).toEqual(ws); // stored, and stable on the next load
+    expect(listCorrupt(st)).toEqual([]);
+  });
+
+  it('does not touch a copy you have edited', () => {
+    const edited = { ...oldFlowSeed('Full Body A', FULL_BODY_A, 'idA'), restBetweenRounds: 90 };
+    const renamedStep = oldFlowSeed('Full Body B', FULL_BODY_B, 'idB');
+    renamedStep.steps[0].label = 'My own first move';
+    const st = memStorage();
+    saveLibrary([edited, renamedStep], st);
+    const ws = loadLibrary(st);
+    expect(ws[0]).toEqual(edited);
+    expect(ws[1]).toEqual(renamedStep);
+  });
+
+  it('does not touch a workout of the same name that is not a flow', () => {
+    const mine = { ...oldFlowSeed('Full Body A', FULL_BODY_A, 'idA'), mode: 'custom' as const };
+    const st = memStorage();
+    saveLibrary([mine], st);
+    expect(loadLibrary(st)[0]).toEqual(mine);
+  });
+});
+
+describe('restBetweenSteps storage', () => {
+  it('a workout with a non-numeric restBetweenSteps is treated as unreadable', () => {
+    const bad = { ...seedWorkouts()[0], restBetweenSteps: 'lots' };
+    const st = memStorage({ [LIBRARY_KEY]: JSON.stringify([bad]) });
+    expect(loadLibrary(st)).toHaveLength(3); // seeds: nothing readable
+    expect(listCorrupt(st)).toHaveLength(1);
   });
 });
 

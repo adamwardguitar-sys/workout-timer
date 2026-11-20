@@ -45,4 +45,12 @@ describe('templateFor', () => {
     expect(a.id).not.toBe(b.id);
     expect(a.steps[0].id).not.toBe(b.steps[0].id);
   });
+
+  it('interval is a list of 40s exercises with a shared 20s rest', () => {
+    const w = templateFor('interval');
+    expect(w.steps).toHaveLength(3);
+    expect(w.steps.every((x) => x.kind === 'timed' && x.role === 'work' && x.seconds === 40)).toBe(true);
+    expect(w.restBetweenSteps).toBe(20);
+    expect(w.rounds).toBe(3);
+  });
 });

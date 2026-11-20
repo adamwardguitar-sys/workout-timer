@@ -15,9 +15,12 @@ export function segmentsForRound(w: Workout, round: number): Segment[] {
   const push = (seg: Omit<Segment, 'id' | 'round'>) =>
     segs.push({ ...seg, id: `${round}:${segs.length}`, round });
 
+  const stepRest = w.restBetweenSteps ?? 0;
+  const paced = (s: Workout['steps'][number]) => s.role === 'work' && (s.kind === 'timed' || w.advance === 'step');
   let mergedEmitted = false;
   let tapIndex = 0;
-  for (const s of w.steps) {
+  for (let i = 0; i < w.steps.length; i++) {
+    const s = w.steps[i];
     if (isTapWork(s)) {
       if (w.advance === 'round') {
         if (mergedEmitted) continue;
@@ -30,6 +33,12 @@ export function segmentsForRound(w: Workout, round: number): Segment[] {
       push({ role: s.role, label: s.label, seconds: null });
     } else {
       push({ role: s.role, label: s.label, seconds: s.seconds ?? 0, ...(s.counter ? { counter: true } : {}) });
+    }
+
+    // shared rest after each exercise; the round rest takes over after the last one
+    if (stepRest > 0 && paced(s) && w.steps[i + 1]?.role !== 'rest') {
+      const isLast = i === w.steps.length - 1;
+      if (!(isLast && (isFinal || w.restBetweenRounds > 0))) push({ role: 'rest', label: 'Rest', seconds: stepRest });
     }
   }
 
@@ -56,6 +65,9 @@ export function validateWorkout(w: Workout): string[] {
   }
   if (!Number.isFinite(w.restBetweenRounds) || w.restBetweenRounds < 0) {
     errors.push('Rest between rounds cannot be negative.');
+  }
+  if (w.restBetweenSteps !== undefined && (!Number.isFinite(w.restBetweenSteps) || w.restBetweenSteps < 0)) {
+    errors.push('Rest after each exercise cannot be negative.');
   }
   return errors;
 }

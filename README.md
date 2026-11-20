@@ -4,14 +4,14 @@ A phone-first workout timer you can install to your home screen. Build a library
 
 ## Modes
 
-- **Interval**: work and rest, repeated for N rounds
+- **Interval**: a list of exercises, each timed (default 40s on, 20s off), for N rounds
 - **Tabata**: 20s on, 10s off, 8 rounds
 - **EMOM**: a new round every minute
 - **AMRAP**: one countdown, tap to count rounds
 - **Kettlebell Flow**: untimed exercises, tap **Done**, then a timed rest (default 2:00), repeating until you stop
 - **Custom**: any mix of timed and tap-to-finish steps
 
-Every workout has a configurable **get ready** countdown, your own work and rest steps, and an optional number of rounds (or "until I stop"). It starts with three workouts in the library: Full Body A, Full Body B and Kettlebell Rounds (Athenian Complex).
+Every workout has a configurable **get ready** countdown, your own work and rest steps, and an optional number of rounds (or "until I stop"). It starts with three workouts in the library: Full Body A and Full Body B (40s on, 20s off through the list) and Kettlebell Rounds (Athenian Complex).
 
 ## Install on your phone
 

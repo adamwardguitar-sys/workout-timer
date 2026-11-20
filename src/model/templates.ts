@@ -32,7 +32,12 @@ export function templateFor(mode: Mode): Workout {
   };
   switch (mode) {
     case 'interval':
-      return { ...base, steps: [timed('Work', 40), timed('Rest', 20, 'rest')], rounds: 8 };
+      return {
+        ...base,
+        steps: [timed('Exercise 1', 40), timed('Exercise 2', 40), timed('Exercise 3', 40)],
+        restBetweenSteps: 20,
+        rounds: 3,
+      };
     case 'tabata':
       return { ...base, steps: [timed('Work', 20), timed('Rest', 10, 'rest')], rounds: 8 };
     case 'emom':
