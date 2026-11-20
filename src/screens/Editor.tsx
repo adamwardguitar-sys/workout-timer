@@ -16,45 +16,43 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useLibrary } from '../hooks/useLibrary';
+import { NumberField } from '../components/NumberField';
 import { MODE_LABELS } from '../model/format';
 import { newId } from '../model/id';
 import { validateWorkout } from '../model/segments';
 import type { Step, Workout } from '../model/types';
 import type { Navigate, Route } from '../route';
 
-const toInt = (v: string) => {
-  const n = Math.floor(Number(v));
-  return Number.isFinite(n) && n > 0 ? n : 0;
-};
-
-function TimeField(props: { label: string; seconds: number; onChange: (seconds: number) => void; disabled?: boolean }) {
-  const { label, seconds, onChange, disabled } = props;
+function TimeField(props: {
+  label: string;
+  seconds: number;
+  onChange: (seconds: number) => void;
+  disabled?: boolean;
+  /** Visually hide the label (it stays for screen readers); used inside step rows. */
+  compact?: boolean;
+}) {
+  const { label, seconds, onChange, disabled, compact } = props;
   const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
   const m = Math.floor(safe / 60);
   const s = Math.floor(safe % 60);
   return (
-    <div className="time-field">
-      <span className="field-label">{label}</span>
-      <input
-        type="number"
-        inputMode="numeric"
+    <div className={`time-field${compact ? ' compact' : ''}`}>
+      <span className={compact ? 'sr-only' : 'field-label'}>{label}</span>
+      <NumberField
         min={0}
         aria-label={`${label} minutes`}
         disabled={disabled}
         value={m}
-        onFocus={(e) => e.currentTarget.select()}
-        onChange={(e) => onChange(toInt(e.target.value) * 60 + s)}
+        onChange={(n) => onChange((n ?? 0) * 60 + s)}
       />
       <span aria-hidden>:</span>
-      <input
-        type="number"
-        inputMode="numeric"
+      <NumberField
         min={0}
         aria-label={`${label} seconds`}
         disabled={disabled}
-        value={String(s).padStart(2, '0')}
-        onFocus={(e) => e.currentTarget.select()}
-        onChange={(e) => onChange(m * 60 + toInt(e.target.value))}
+        pad={2}
+        value={s}
+        onChange={(n) => onChange(m * 60 + (n ?? 0))}
       />
     </div>
   );
@@ -118,6 +116,7 @@ function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
           </select>
           {step.kind === 'timed' && (
             <TimeField
+              compact
               label={`Step ${n} time`}
               seconds={step.seconds ?? 0}
               disabled={locked}
@@ -125,15 +124,14 @@ function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
             />
           )}
           {step.kind === 'tap' && step.role === 'work' && (
-            <input
-              type="number"
-              inputMode="numeric"
+            <NumberField
               min={0}
               placeholder="Reps"
               className="reps"
               aria-label={`Step ${n} reps`}
-              value={step.reps ?? ''}
-              onChange={(e) => set({ reps: e.target.value === '' ? undefined : toInt(e.target.value) })}
+              allowEmpty
+              value={step.reps}
+              onChange={(reps) => set({ reps })}
             />
           )}
           {amrap && step.kind === 'timed' && (
@@ -250,14 +248,12 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
         />
         <div className="rounds-field">
           <span className="field-label">Rounds</span>
-          <input
-            type="number"
-            inputMode="numeric"
+          <NumberField
             min={1}
             aria-label="Rounds"
             disabled={w.rounds === null || locked}
-            value={w.rounds ?? ''}
-            onChange={(e) => update({ rounds: toInt(e.target.value) })}
+            value={w.rounds ?? undefined}
+            onChange={(rounds) => update({ rounds: rounds ?? 0 })}
           />
           <label className="check">
             <input

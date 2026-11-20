@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cueFor } from '../audio/cues';
+import { NumberField } from '../components/NumberField';
 import { createSound, type Sound } from '../audio/sound';
 import {
   adjustSeconds,
@@ -170,15 +171,12 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
           <div className="start-options">
             <span className="field-label">Rounds</span>
             <div className="rounds-field">
-              <input
-                type="number"
-                inputMode="numeric"
+              <NumberField
                 min={1}
                 aria-label="Rounds"
                 disabled={chosenRounds === null}
-                value={chosenRounds ?? ''}
-                onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => setRoundsChoice(Math.max(0, Math.floor(Number(e.target.value)) || 0))}
+                value={chosenRounds ?? undefined}
+                onChange={(n) => setRoundsChoice(n ?? 0)}
               />
               <label className="check">
                 <input

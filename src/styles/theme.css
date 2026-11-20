@@ -186,3 +186,24 @@ h1, h2, .run-title, .run-label, .item, .card-title { overflow-wrap: anywhere; }
 .card-last { font-size: 0.8rem; margin-top: 4px; }
 .week-letters, .grid { max-width: 420px; }
 @media (min-width: 900px) { .grid, .week-letters { max-width: 360px; } }
+
+/* ---- form polish: consistent selects, compact step rows, comfortable tap targets ---- */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 34px 0 12px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1l6 6 6-6' fill='none' stroke='%23aab4ba' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.step-options { display: grid; grid-template-columns: minmax(8.5rem, 1.4fr) minmax(6.5rem, 1fr) auto; gap: 8px; align-items: center; }
+.step-options .time-field.compact { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.step-options .time-field.compact input[type='number'] { width: 3.6rem; }
+.step-options select { width: 100%; min-width: 0; }
+.step-options .reps, .step-options .check { grid-column: auto; }
+@media (max-width: 480px) {
+  .step-options { grid-template-columns: 1fr 1fr; }
+  .step-options .time-field.compact { grid-column: 1 / -1; }
+}
+.card-title { min-height: 44px; display: inline-flex; align-items: center; }
+.handle { min-width: 44px; }

@@ -168,6 +168,23 @@ describe('Editor validation and leaving', () => {
   });
 });
 
+describe('Editor number fields', () => {
+  it('lets you clear a time field and type a new one', async () => {
+    const { user, saved } = setup(templateFor('custom'));
+    const secs = screen.getByLabelText('Step 1 time seconds');
+    await user.clear(secs);
+    expect(secs).toHaveValue(null);
+    await user.type(secs, '45');
+    expect(saved().steps[0].seconds).toBe(45);
+  });
+
+  it('keeps the step time label out of the visual layout (it is only for screen readers)', () => {
+    setup(templateFor('custom'));
+    expect(screen.getByText('Step 1 time')).toHaveClass('sr-only');
+    expect(screen.getByText('Get ready')).not.toHaveClass('sr-only');
+  });
+});
+
 describe('Editor wait between rounds', () => {
   it('can be switched on and off, and is off by default', async () => {
     const { user, saved } = setup(templateFor('interval'));
