@@ -99,7 +99,7 @@ export function Settings({ navigate }: { navigate: Navigate }) {
           checked={settings.vibrate}
           onChange={(e) => change({ vibrate: e.target.checked })}
         />
-        Vibration <span className="muted">(not available on iPhone)</span>
+        Vibration
       </label>
 
       <h2>Units</h2>
@@ -125,10 +125,8 @@ export function Settings({ navigate }: { navigate: Navigate }) {
         />
         Keep screen awake during a workout
       </label>
-      <p className="muted">Beeps stop if the screen locks, so keep it on while you train.</p>
 
       <h2>Backup</h2>
-      <p className="muted">Your workouts live on this device. Export a copy now and then.</p>
       <div className="backup-actions">
         <button className="btn" onClick={exportBackup}>
           Export backup

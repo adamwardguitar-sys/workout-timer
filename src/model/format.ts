@@ -9,15 +9,6 @@ export const MODE_LABELS: Record<Mode, string> = {
   custom: 'Custom',
 };
 
-export const MODE_BLURBS: Record<Mode, string> = {
-  interval: 'Timed exercises and rests. Plays through every round on its own, no tapping.',
-  flow: 'No times: do each round at your own pace, tap when it is done, then rest.',
-  tabata: '20s on, 10s off, 8 rounds',
-  emom: 'A new round every minute',
-  amrap: 'As many rounds as you can in the time',
-  custom: 'Build any sequence',
-};
-
 export function formatTime(totalSeconds: number): string {
   const t = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(t / 3600);

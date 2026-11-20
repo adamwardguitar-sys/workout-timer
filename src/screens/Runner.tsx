@@ -23,7 +23,7 @@ import { useLibrary } from '../hooks/useLibrary';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatDuration, formatTime } from '../model/format';
 import { segmentsForRound, validateWorkout } from '../model/segments';
-import type { Segment, Workout } from '../model/types';
+import type { Segment } from '../model/types';
 import type { Navigate } from '../route';
 import { clearActiveRun, loadActiveRun, saveActiveRun } from '../store/activeRun';
 import {
@@ -48,16 +48,6 @@ function nextSegment(run: RunState): Segment | undefined {
 
 function nextText(seg: Segment): string {
   return seg.items ? `Round ${seg.round}` : seg.label;
-}
-
-/** One line on the start screen saying whether you will need to tap anything. */
-function startHint(w: Workout): string {
-  const timed = w.steps.some((s) => s.kind === 'timed');
-  const taps = w.steps.some((s) => s.kind === 'tap');
-  if (w.steps.some((s) => s.counter)) return 'Tap "+1 round" each time you finish a round.';
-  if (!timed) return 'Tap "Round done" at the end of each round.';
-  if (taps) return 'Plays through on its own. Tap "Done" on steps that have no time.';
-  return 'Plays all the way through. No tapping needed.';
 }
 
 function itemText(i: { label: string; reps?: number }): string {
@@ -240,7 +230,6 @@ export function Runner({
         <p className="muted">
           {workout.steps.length} steps · get ready {formatTime(workout.prepSeconds)}
         </p>
-        <p className="muted hint">{startHint(workout)}</p>
         {canChooseRounds && (
           <div className="start-options">
             <span className="field-label">Rounds</span>
@@ -334,7 +323,7 @@ export function Runner({
           <textarea
             className="note"
             aria-label="Note"
-            placeholder="Add a note (weights, how it felt…)"
+            placeholder="Note"
             rows={2}
             value={note}
             onChange={(e) => {

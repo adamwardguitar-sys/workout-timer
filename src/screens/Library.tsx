@@ -17,7 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Icon, MODE_ICONS } from '../components/Icon';
 import { useLibrary } from '../hooks/useLibrary';
-import { MODE_BLURBS, MODE_LABELS, dateLabel, formatDuration, formatTime, relativeDay } from '../model/format';
+import { MODE_LABELS, dateLabel, formatDuration, formatTime, relativeDay } from '../model/format';
 import { estimateSeconds, validateWorkout } from '../model/segments';
 import { templateFor } from '../model/templates';
 import type { Mode, Workout } from '../model/types';
@@ -25,7 +25,7 @@ import type { Navigate } from '../route';
 import { loadActiveRun } from '../store/activeRun';
 import { loadHistory } from '../store/history';
 import { clearCorrupt, listCorrupt } from '../store/library';
-import { activityGrid, dayKey, thisWeek, workoutStats } from '../store/stats';
+import { activityGrid, dayKey, workoutStats } from '../store/stats';
 import { saveTextFile } from '../util/download';
 
 const MAIN_MODES: Mode[] = ['interval', 'flow'];
@@ -135,7 +135,6 @@ export function Library({ navigate }: { navigate: Navigate }) {
   const [sessions] = useState(() => loadHistory());
   const stats = workoutStats(sessions);
   const now = Date.now();
-  const week = thisWeek(sessions, now);
   const weekCells = activityGrid(sessions, now, 1);
   const todayKey = dayKey(now);
   const sensors = useSensors(
@@ -195,11 +194,6 @@ export function Library({ navigate }: { navigate: Navigate }) {
         </div>
         <div className="greeting" data-testid="greeting">
           {greeting(new Date(now).getHours())}
-        </div>
-        <div className="muted" data-testid="week-summary">
-          {week.sessions === 0
-            ? 'No sessions yet this week'
-            : `${plural(week.sessions, 'session')} this week · ${formatDuration(week.seconds)}`}
         </div>
       </header>
 
@@ -295,7 +289,6 @@ export function Library({ navigate }: { navigate: Navigate }) {
                     </span>
                     <span className="mode-text">
                       <strong>{MODE_LABELS[m]}</strong>
-                      <span>{MODE_BLURBS[m]}</span>
                     </span>
                   </button>
                 </li>
@@ -311,7 +304,6 @@ export function Library({ navigate }: { navigate: Navigate }) {
                     </span>
                     <span className="mode-text">
                       <strong>{MODE_LABELS[m]}</strong>
-                      <span>{MODE_BLURBS[m]}</span>
                     </span>
                   </button>
                 </li>
@@ -341,7 +333,6 @@ export function Library({ navigate }: { navigate: Navigate }) {
           </ul>
         </SortableContext>
       </DndContext>
-      {lib.workouts.length === 0 && <p className="empty">No workouts yet. Tap “New workout” to make one.</p>}
     </section>
   );
 }

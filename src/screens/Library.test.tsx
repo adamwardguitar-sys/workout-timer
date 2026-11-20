@@ -36,8 +36,10 @@ describe('Library', () => {
     }
     expect(within(picker).queryByRole('button', { name: /^Custom/ })).not.toBeInTheDocument();
     expect(within(picker).getByText('Quick presets')).toBeInTheDocument();
-    expect(within(picker).getByRole('button', { name: /^Timer/ })).toHaveTextContent(/no tapping/i);
-    expect(within(picker).getByRole('button', { name: /^Open-ended rounds/ })).toHaveTextContent(/tap/i);
+    // just the names: no explanatory blurbs
+    expect(within(picker).getByRole('button', { name: /^Timer/ })).toHaveTextContent(/^Timer$/);
+    expect(within(picker).getByRole('button', { name: /^Open-ended rounds/ })).toHaveTextContent(/^Open-ended rounds$/);
+    expect(within(picker).getByRole('button', { name: /^Tabata/ })).toHaveTextContent(/^Tabata$/);
     await user.click(within(picker).getByRole('button', { name: /^Tabata/ }));
     const ws = loadLibrary();
     expect(ws).toHaveLength(4);
@@ -223,17 +225,25 @@ describe('Library', () => {
       completed: true,
     });
 
-    it('greets you and says no sessions yet this week', () => {
+    it('greets you, with no written weekly summary (the week strip shows it)', () => {
       setup();
       expect(screen.getByTestId('greeting')).toHaveTextContent(/^Good (morning|afternoon|evening)/);
-      expect(screen.getByTestId('week-summary')).toHaveTextContent('No sessions yet this week');
+      expect(screen.queryByTestId('week-summary')).not.toBeInTheDocument();
+      expect(screen.queryByText(/sessions? (yet )?this week/)).not.toBeInTheDocument();
     });
 
-    it('summarises the week once you have trained', () => {
+    it('still has no weekly sentence once you have trained', () => {
       const [a] = loadLibrary();
       addSession(logged('1', a.id, Date.now(), 600));
       setup();
-      expect(screen.getByTestId('week-summary')).toHaveTextContent('1 session this week · 10 min');
+      expect(screen.queryByText(/this week/)).not.toBeInTheDocument();
+    });
+
+    it('has no instruction text when the library is empty', () => {
+      saveLibrary([]);
+      setup();
+      expect(screen.queryByText(/No workouts yet/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Tap/)).not.toBeInTheDocument();
     });
 
     it('shows this week as seven days, marking trained days and today', () => {

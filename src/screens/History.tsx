@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../components/Icon';
 import { WeightChart } from '../components/WeightChart';
 import { WeightFields } from '../components/WeightFields';
 import { useHistory } from '../hooks/useHistory';
@@ -224,6 +225,9 @@ export function History({ now = Date.now() }: { now?: number }) {
                       onClick={() => setOpenChart(open ? null : p.exercise)}
                     >
                       {summary}
+                      <span className="chev" aria-hidden>
+                        <Icon name="chevron" size={18} />
+                      </span>
                     </button>
                   ) : (
                     <div className="progress-row">{summary}</div>
@@ -236,9 +240,7 @@ export function History({ now = Date.now() }: { now?: number }) {
         </section>
       )}
 
-      {h.sessions.length === 0 ? (
-        <p className="empty">No sessions yet. Finish a workout and it will show up here.</p>
-      ) : (
+      {h.sessions.length > 0 &&
         groups.map((g) => (
           <div key={g.date} className="day-group">
             <h2>
@@ -255,8 +257,7 @@ export function History({ now = Date.now() }: { now?: number }) {
               />
             ))}
           </div>
-        ))
-      )}
+        ))}
     </section>
   );
 }

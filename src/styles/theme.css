@@ -300,8 +300,6 @@ button.cell.future:disabled { opacity: 0.35; }
 .progress-list li { display: block; padding: 0; }
 .progress-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; padding: 10px 12px; text-align: left; background: none; border: 0; border-radius: var(--radius-sm); color: inherit; }
 button.progress-row { cursor: pointer; }
-button.progress-row::after { content: 'Show trend'; grid-column: 1 / -1; font-size: 0.75rem; color: var(--text-dim); }
-button.progress-row[aria-expanded='true']::after { content: 'Hide trend'; }
 .progress-list li.open { border-color: rgba(16, 162, 141, 0.5); }
 .chart { margin: 0; padding: 0 12px 10px; }
 .chart-frame { position: relative; }
@@ -333,3 +331,8 @@ button.progress-row[aria-expanded='true']::after { content: 'Hide trend'; }
 .run-controls .btn { flex: none; width: 84px; min-height: 64px; padding: 0; border-radius: 20px; }
 .run-controls .btn .icon { margin: 0; }
 .run-controls { background: none; }
+
+/* expandable exercise rows: a chevron instead of words */
+button.progress-row { position: relative; padding-right: 36px; }
+.progress-row .chev { position: absolute; right: 10px; top: 50%; margin-top: -9px; color: var(--text-dim); display: inline-grid; transition: transform 0.15s ease; }
+button.progress-row[aria-expanded='true'] .chev { transform: rotate(180deg); }

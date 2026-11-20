@@ -279,7 +279,8 @@ describe('Editor Tabata lock', () => {
     expect(screen.getByLabelText('Step 1 role')).toBeDisabled();
     expect(screen.getByLabelText('Name')).toBeEnabled();
     expect(screen.getByLabelText('Get ready seconds')).toBeEnabled();
-    expect(screen.getByText(/Tabata is fixed at 20s on, 10s off, 8 rounds/)).toBeInTheDocument();
+    expect(screen.queryByText(/Tabata is fixed/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Convert to Custom' })).toBeInTheDocument();
   });
 
   it('Convert to Custom unlocks everything and changes the mode', async () => {

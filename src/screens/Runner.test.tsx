@@ -688,21 +688,26 @@ describe('Runner Skip button', () => {
   });
 });
 
-describe('Runner start screen explains the mode', () => {
-  it('Timer says it plays all the way through with no tapping', () => {
-    setup(list3);
-    expect(screen.getByText('Plays all the way through. No tapping needed.')).toBeInTheDocument();
+describe('Runner start screen has no instructional text', () => {
+  it.each([
+    ['Timer', list3],
+    ['Open-ended rounds', flow],
+    ['AMRAP', amrap],
+  ])('%s: no hints about tapping', (_name, w) => {
+    setup(w);
+    expect(document.querySelector('.hint')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/tapping|Plays all the way|Plays through|at the end of each round|each time you finish/i);
   });
-  it('Open-ended rounds says to tap Round done', () => {
-    setup(flow);
-    expect(screen.getByText(/Tap .*Round done.* at the end of each round/)).toBeInTheDocument();
-  });
-  it('AMRAP says to tap +1 round', () => {
-    setup(amrap);
-    expect(screen.getByText(/Tap .*\+1 round/)).toBeInTheDocument();
-  });
+
   it('has no wait-for-a-tap option', () => {
     setup(noPrep);
     expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
+  });
+
+  it('the finish note box is just labelled Note', async () => {
+    const { start } = setup(quick);
+    await start();
+    tick(5_000);
+    expect(screen.getByLabelText('Note')).toHaveAttribute('placeholder', 'Note');
   });
 });

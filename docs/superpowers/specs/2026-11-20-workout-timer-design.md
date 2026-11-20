@@ -68,6 +68,10 @@ Tapping to jump between exercises is removed everywhere: no Next/Previous exerci
 
 Next/Previous stayed removed, but a single optional **Skip** sits beside Pause on timed steps and moves to whatever comes next (get ready to first exercise, exercise to its rest, rest to next exercise); it reads Skip get ready / Skip exercise / Skip rest. Skipping the very last step asks first. There is no Previous, no Skip on the untimed round list (only **Round done**) and none on AMRAP (Quit ends it). Nothing ever requires a tap: Timer workouts still play straight through on their own. Double taps within 400 ms are ignored.
 
+## Revision 9 (2026-11-20): no explanatory text
+
+The interface carries labels, controls and data only, never instructions or hints: no weekly summary sentence on home (the week strip shows it), no mode descriptions in the new-workout sheet, no hints on the start screen, no empty-state sentences, no helper lines in Settings, no "show trend" captions (expandable rows use a chevron), and the finish note box is just labelled Note. Functional status (Next:, Paused, Last done, Saved to history, errors) stays.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.

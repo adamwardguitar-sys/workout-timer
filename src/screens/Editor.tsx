@@ -236,7 +236,6 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
 
       {locked && (
         <div className="notice">
-          <p>Tabata is fixed at 20s on, 10s off, 8 rounds. Convert to Custom to change it.</p>
           <button className="btn" onClick={() => update({ mode: 'custom' })}>
             Convert to Custom
           </button>

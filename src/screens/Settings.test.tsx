@@ -48,6 +48,16 @@ describe('Settings controls', () => {
   });
 });
 
+describe('Settings has no helper text', () => {
+  it('shows controls only: no explanatory sentences', () => {
+    setup();
+    expect(screen.queryByText(/Beeps stop if the screen locks/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/live on this device/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not available on iPhone/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Vibration')).toBeInTheDocument();
+  });
+});
+
 describe('Settings icons', () => {
   it('uses an icon for the back button', () => {
     setup();

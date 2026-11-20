@@ -32,10 +32,11 @@ const setup = (list: Session[] = []) => {
 };
 
 describe('History empty', () => {
-  it('invites you to finish a workout', () => {
+  it('shows empty tiles and no instruction text', () => {
     setup();
     expect(screen.getByRole('heading', { name: 'History' })).toBeInTheDocument();
-    expect(screen.getByText(/No sessions yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/No sessions yet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/show up here/)).not.toBeInTheDocument();
     expect(screen.getByTestId('tile-week')).toHaveTextContent('0');
   });
 });
@@ -203,5 +204,19 @@ describe('History weights', () => {
     await user.click(screen.getByRole('button', { name: /^Y/ }));
     expect(screen.queryByRole('group', { name: /^X weight/ })).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: /^Y weight/ })).toBeInTheDocument();
+  });
+});
+
+describe('History expandable rows use an icon, not words', () => {
+  it('an exercise row with a chart has a chevron and no "Show trend" text', async () => {
+    const tracked = ['Goblet Squat'];
+    saveHistory([
+      sess('a', at(11, 2, 8), { tracked, weights: [{ exercise: 'Goblet Squat', value: 12 }], unit: 'kg' }),
+      sess('b', at(11, 9, 8), { tracked, weights: [{ exercise: 'Goblet Squat', value: 16 }], unit: 'kg' }),
+    ]);
+    render(<History now={NOW} />);
+    const row = screen.getByRole('button', { name: /Goblet Squat/ });
+    expect(row.querySelector('svg')).not.toBeNull();
+    expect(row.textContent).not.toMatch(/trend/i);
   });
 });
