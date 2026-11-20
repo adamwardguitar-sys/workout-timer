@@ -8,6 +8,7 @@ import {
   resume,
   skip,
   startRun,
+  summarize,
   update,
   type RunEvent,
 } from './runner';
@@ -205,5 +206,59 @@ describe('skip, back and adjustSeconds', () => {
   it('adjustSeconds clamps to leave 1 second remaining', () => {
     const r = adjustSeconds(startRun(w, T0), -1000, T0 + s(10));
     expect(remainingMs(r, T0 + s(10))).toBe(1000);
+  });
+});
+
+describe('summarize', () => {
+  const interval = wk({
+    steps: [timed('Work', 40), timed('Rest', 20, 'rest')],
+    rounds: 3,
+  });
+
+  it('counts active time only, excluding time spent paused', () => {
+    let st = startRun(interval, T0);
+    st = pause(st, T0 + s(5));
+    st = resume(st, T0 + s(65));
+    expect(summarize(st, T0 + s(70)).durationSec).toBe(10);
+  });
+
+  it('while paused, time stops at the pause', () => {
+    const st = pause(startRun(interval, T0), T0 + s(8));
+    expect(summarize(st, T0 + s(500)).durationSec).toBe(8);
+  });
+
+  it('a finished run uses its real end, not when the page noticed', () => {
+    const r = startRun(wk({ steps: [timed('Go', 10)] }), T0);
+    const out = update(r, T0 + s(25));
+    expect(out.state.finished).toBe(true);
+    expect(summarize(out.state, T0 + s(999))).toMatchObject({ durationSec: 10, completed: true });
+  });
+
+  it('counts rounds done: in work they are not done, in the closing rest they are', () => {
+    const r = startRun(interval, T0);
+    const at = (sec: number) => summarize(update(r, T0 + s(sec)).state, T0 + s(sec)).roundsDone;
+    expect(at(10)).toBe(0); // round 1 work
+    expect(at(45)).toBe(1); // round 1 closing rest
+    expect(at(70)).toBe(1); // round 2 work
+    expect(at(125)).toBe(2); // round 2 closing rest
+  });
+
+  it('a finished run reports all its rounds', () => {
+    const out = update(startRun(interval, T0), T0 + s(1000));
+    expect(summarize(out.state, T0 + s(1000))).toMatchObject({ roundsDone: 3, completed: true });
+  });
+
+  it('flow: tapping Done finishes the round, so the rest counts it', () => {
+    const flow = wk({ steps: [tap('A'), tap('B')], advance: 'round', rounds: null, restBetweenRounds: 120 });
+    const r = startRun(flow, T0);
+    expect(summarize(r, T0 + s(30)).roundsDone).toBe(0);
+    const rested = done(r, T0 + s(30)).state;
+    expect(summarize(rested, T0 + s(31)).roundsDone).toBe(1);
+  });
+
+  it('reports AMRAP laps and an unfinished run as not completed', () => {
+    const amrap = wk({ steps: [timed('AMRAP', 600, 'work', true)], rounds: 1 });
+    const st = done(done(startRun(amrap, T0), T0 + s(100)).state, T0 + s(200)).state;
+    expect(summarize(st, T0 + s(250))).toMatchObject({ laps: 2, completed: false, durationSec: 250 });
   });
 });

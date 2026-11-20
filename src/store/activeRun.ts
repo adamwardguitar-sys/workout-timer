@@ -45,6 +45,8 @@ function isRunState(x: unknown): x is RunState {
     s.index < s.segments.length &&
     typeof s.round === 'number' &&
     typeof s.segmentStart === 'number' &&
+    (s.startedAt === undefined || typeof s.startedAt === 'number') &&
+    (s.pausedMs === undefined || typeof s.pausedMs === 'number') &&
     (s.pausedAt === null || typeof s.pausedAt === 'number') &&
     (s.lastCountdown === null || typeof s.lastCountdown === 'number') &&
     typeof s.laps === 'number' &&
@@ -72,7 +74,9 @@ export function loadActiveRun(
       clearActiveRun(storage);
       return null;
     }
-    return saved.state;
+    // runs saved before time tracking existed have no start time: use the current segment's start
+    const st = saved.state;
+    return { ...st, startedAt: st.startedAt ?? st.segmentStart, pausedMs: st.pausedMs ?? 0 };
   } catch {
     return null;
   }

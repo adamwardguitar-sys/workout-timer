@@ -9,6 +9,11 @@ export interface RunState {
   /** Last round whose segments have been generated. */
   round: number;
   segmentStart: number;
+  /** When the run began, and total time spent paused: together they give the active time. */
+  startedAt: number;
+  pausedMs: number;
+  /** Exact moment the run ended (set when finished). */
+  endedAt?: number;
   pausedAt: number | null;
   lastCountdown: number | null;
   laps: number;
@@ -40,6 +45,8 @@ export function startRun(w: Workout, now: number, beepSeconds = 3): RunState {
     index: 0,
     round: 1,
     segmentStart: now,
+    startedAt: now,
+    pausedMs: 0,
     pausedAt: null,
     lastCountdown: null,
     laps: 0,
@@ -63,9 +70,9 @@ function moveNext(st: RunState, t: number): RunState {
   index += 1;
   if (index >= segments.length) {
     const w = st.workout;
-    if (w.rounds !== null && round >= w.rounds) return { ...st, finished: true };
+    if (w.rounds !== null && round >= w.rounds) return { ...st, finished: true, endedAt: t };
     const next = segmentsForRound(w, round + 1);
-    if (next.length === 0) return { ...st, finished: true };
+    if (next.length === 0) return { ...st, finished: true, endedAt: t };
     segments = [...segments.slice(-1), ...next]; // keep one segment behind for back()
     index = 1;
     round += 1;
@@ -89,7 +96,7 @@ export function update(s: RunState, now: number): Stepped {
     const end = st.segmentStart + seg.seconds * 1000;
     if (now < end) break;
     if (++guard > MAX_ADVANCES) {
-      st = { ...st, finished: true };
+      st = { ...st, finished: true, endedAt: now };
       break;
     }
     st = moveNext(st, end);
@@ -122,7 +129,8 @@ export function pause(s: RunState, now: number): RunState {
 
 export function resume(s: RunState, now: number): RunState {
   if (s.pausedAt === null) return s;
-  return { ...s, segmentStart: s.segmentStart + (now - s.pausedAt), pausedAt: null };
+  const gap = now - s.pausedAt;
+  return { ...s, segmentStart: s.segmentStart + gap, pausedMs: s.pausedMs + gap, pausedAt: null };
 }
 
 export function done(s: RunState, now: number): Stepped {
@@ -156,4 +164,29 @@ export function adjustSeconds(s: RunState, deltaSeconds: number, now: number): R
   const seconds = Math.max(seg.seconds + deltaSeconds, elapsed / 1000 + 1);
   const segments = s.segments.map((x, i) => (i === s.index ? { ...x, seconds } : x));
   return { ...s, segments, lastCountdown: null };
+}
+
+export interface RunSummary {
+  /** Active seconds: paused time is not counted. */
+  durationSec: number;
+  /** Whole rounds finished (a round counts once you reach the rest that closes it). */
+  roundsDone: number;
+  laps: number;
+  /** True only if the workout ran to its end. */
+  completed: boolean;
+}
+
+export function summarize(s: RunState, now: number): RunSummary {
+  const end = s.endedAt ?? s.pausedAt ?? now;
+  const durationSec = Math.max(0, Math.round((end - s.startedAt - s.pausedMs) / 1000));
+  let roundsDone: number;
+  if (s.finished) {
+    roundsDone = s.workout.rounds ?? s.round;
+  } else {
+    const seg = currentSegment(s);
+    const next = s.segments[s.index + 1];
+    const closesRound = seg.role === 'rest' && (!next || next.round !== seg.round);
+    roundsDone = seg.round === 0 ? 0 : seg.round - 1 + (closesRound ? 1 : 0);
+  }
+  return { durationSec, roundsDone, laps: s.laps, completed: s.finished };
 }
