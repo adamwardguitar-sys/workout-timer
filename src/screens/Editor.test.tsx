@@ -168,6 +168,29 @@ describe('Editor validation and leaving', () => {
   });
 });
 
+describe('Editor wait between rounds', () => {
+  it('can be switched on and off, and is off by default', async () => {
+    const { user, saved } = setup(templateFor('interval'));
+    const box = screen.getByLabelText('Wait for a tap between rounds');
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    expect(saved().waitBetweenRounds).toBe(true);
+    await user.click(screen.getByLabelText('Wait for a tap between rounds'));
+    expect(saved().waitBetweenRounds).toBe(false);
+  });
+
+  it('is hidden when there is only one round, and for AMRAP and Tabata', () => {
+    const one = { ...templateFor('interval'), rounds: 1 };
+    const { } = setup(one);
+    expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
+  });
+
+  it('is hidden for Tabata', () => {
+    setup(templateFor('tabata'));
+    expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
+  });
+});
+
 describe('Editor rest after each exercise', () => {
   it('interval workouts can set the shared rest between exercises', () => {
     const { saved } = setup(templateFor('interval'));

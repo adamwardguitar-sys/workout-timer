@@ -37,7 +37,8 @@ export function isWorkout(x: unknown): x is Workout {
     (w.rounds === null || typeof w.rounds === 'number') &&
     (w.advance === 'step' || w.advance === 'round') &&
     typeof w.restBetweenRounds === 'number' &&
-    optNum(w.restBetweenSteps)
+    optNum(w.restBetweenSteps) &&
+    (w.waitBetweenRounds === undefined || typeof w.waitBetweenRounds === 'boolean')
   );
 }
 

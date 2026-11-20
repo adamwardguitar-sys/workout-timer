@@ -21,6 +21,8 @@ export interface Workout {
   restBetweenRounds: number;
   /** Shared rest after each exercise (timed steps, or tap steps when advance is 'step'). 0/absent = none. */
   restBetweenSteps?: number;
+  /** Opt-in: stop at the start of each round after the first until you tap. Off by default. */
+  waitBetweenRounds?: boolean;
 }
 
 export interface SegmentItem {
@@ -37,4 +39,6 @@ export interface Segment {
   items?: SegmentItem[];
   itemIndex?: number;
   counter?: boolean;
+  /** A tap-to-continue stop between rounds. */
+  gate?: boolean;
 }

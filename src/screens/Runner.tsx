@@ -58,6 +58,7 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   const [note, setNoteText] = useState('');
   // rounds picked on the start screen for this run only ('saved' = use the workout's own setting)
   const [roundsChoice, setRoundsChoice] = useState<number | null | 'saved'>('saved');
+  const [waitChoice, setWaitChoice] = useState<boolean | 'saved'>('saved');
 
   useEffect(() => {
     sound.setVolume(settings.volume);
@@ -130,12 +131,13 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   };
 
   const chosenRounds = roundsChoice === 'saved' ? workout.rounds : roundsChoice;
+  const chosenWait = waitChoice === 'saved' ? !!workout.waitBetweenRounds : waitChoice;
   const canChooseRounds = workout.mode !== 'amrap' && workout.mode !== 'tabata';
 
   function begin() {
     void sound.unlock();
     try {
-      const st = startRun({ ...workout!, rounds: chosenRounds }, Date.now(), settings.beepSeconds);
+      const st = startRun({ ...workout!, rounds: chosenRounds, waitBetweenRounds: chosenWait }, Date.now(), settings.beepSeconds);
       setNeedsTap(false);
       apply(st, [{ type: 'segment-start', segment: currentSegment(st) }]);
     } catch (e) {
@@ -189,6 +191,17 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
               </label>
             </div>
           </div>
+        )}
+        {canChooseRounds && chosenRounds !== 1 && (
+          <label className="check">
+            <input
+              type="checkbox"
+              aria-label="Wait for a tap between rounds"
+              checked={chosenWait}
+              onChange={(e) => setWaitChoice(e.target.checked)}
+            />
+            Wait for a tap between rounds
+          </label>
         )}
         {(errors.length > 0 || startError) && (
           <ul className="errors">
@@ -296,7 +309,12 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
       )}
 
       <div className="run-main">
-        {seg.role === 'prep' ? <div className="run-label">Get ready</div> : seg.seconds !== null && <div className="run-label">{seg.label}</div>}
+        {seg.role === 'prep' ? (
+          <div className="run-label">Get ready</div>
+        ) : (
+          (seg.seconds !== null || seg.gate) && <div className="run-label">{seg.label}</div>
+        )}
+        {seg.gate && <div className="muted">Ready when you are</div>}
         {ms !== null && (
           <div className="clock num" data-testid="clock">
             {formatTime(Math.ceil(ms / 1000))}
@@ -325,7 +343,7 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
         )}
         {seg.seconds === null && !seg.counter && (
           <button className="btn primary huge" onClick={() => act(done)}>
-            Done
+            {seg.gate ? `Start round ${seg.round}` : 'Done'}
           </button>
         )}
         {seg.role === 'rest' && seg.seconds !== null && (

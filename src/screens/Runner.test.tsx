@@ -439,3 +439,55 @@ describe('Runner history', () => {
     expect(loadHistory()).toEqual([]);
   });
 });
+
+describe('Runner waiting between rounds', () => {
+  const gatedW: Workout = {
+    ...noPrep,
+    id: 'gated',
+    steps: [timed('Squats', 40)],
+    rounds: 2,
+    waitBetweenRounds: true,
+  };
+
+  const setupGated = (w: Workout = gatedW) => {
+    saveLibrary([w, interval, noPrep, flow, quick, amrap]);
+    const navigate = vi.fn();
+    const sound = fakeSound();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<Runner id={w.id} navigate={navigate} sound={sound} />);
+    return { user, sound };
+  };
+
+  it('stops on Round 2 until you tap, then starts it', async () => {
+    const { user } = setupGated();
+    await user.click(screen.getByRole('button', { name: 'Start' }));
+    tick(40_000);
+    expect(screen.getByText('Round 2')).toBeInTheDocument();
+    expect(screen.queryByTestId('clock')).not.toBeInTheDocument();
+    tick(300_000);
+    expect(screen.getByText('Round 2')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Start round 2' }));
+    expect(screen.getByText('Squats')).toBeInTheDocument();
+    expect(screen.getByTestId('clock')).toHaveTextContent('0:40');
+  });
+
+  it('the start screen can switch it on for one run only', async () => {
+    const plain: Workout = { ...noPrep, id: 'plain', steps: [timed('Squats', 40)], rounds: 2 };
+    const { user } = setupGated(plain);
+    const box = screen.getByLabelText('Wait for a tap between rounds');
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    await user.click(screen.getByRole('button', { name: 'Start' }));
+    tick(40_000);
+    expect(screen.getByRole('button', { name: 'Start round 2' })).toBeInTheDocument();
+    expect(loadLibrary().find((w) => w.id === 'plain')?.waitBetweenRounds).toBeFalsy();
+  });
+
+  it('the start screen hides the option for a single round', async () => {
+    const { user } = setupGated();
+    expect(screen.getByLabelText('Wait for a tap between rounds')).toBeChecked();
+    fireEvent.change(screen.getByLabelText('Rounds'), { target: { value: '1' } });
+    expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
+    expect(user).toBeDefined();
+  });
+});

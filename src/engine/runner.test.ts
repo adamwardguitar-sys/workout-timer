@@ -262,3 +262,21 @@ describe('summarize', () => {
     expect(summarize(st, T0 + s(250))).toMatchObject({ laps: 2, completed: false, durationSec: 250 });
   });
 });
+
+describe('waiting between rounds', () => {
+  const gated = wk({ steps: [timed('Work', 40)], rounds: 2, waitBetweenRounds: true });
+
+  it('stops at the gate after a round and waits as long as it takes, then Done starts the next round', () => {
+    const r = startRun(gated, T0);
+    const at = update(r, T0 + s(40));
+    expect(currentSegment(at.state)).toMatchObject({ gate: true, label: 'Round 2' });
+    expect(at.events[0]).toMatchObject({ type: 'segment-start' });
+    const later = update(at.state, T0 + s(5000));
+    expect(later.state.index).toBe(at.state.index);
+    expect(later.events).toEqual([]);
+    expect(summarize(later.state, T0 + s(5000)).roundsDone).toBe(1);
+    const go = done(later.state, T0 + s(5000));
+    expect(currentSegment(go.state)).toMatchObject({ label: 'Work', round: 2 });
+    expect(remainingMs(go.state, T0 + s(5000))).toBe(s(40));
+  });
+});

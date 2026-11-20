@@ -155,6 +155,15 @@ describe('30 second get-ready default', () => {
   });
 });
 
+describe('waitBetweenRounds storage', () => {
+  it('a non-boolean waitBetweenRounds is treated as unreadable', () => {
+    const bad = { ...seedWorkouts()[0], waitBetweenRounds: 'yes' };
+    const st = memStorage({ [LIBRARY_KEY]: JSON.stringify([bad]) });
+    expect(loadLibrary(st)).toHaveLength(3);
+    expect(listCorrupt(st)).toHaveLength(1);
+  });
+});
+
 describe('restBetweenSteps storage', () => {
   it('a workout with a non-numeric restBetweenSteps is treated as unreadable', () => {
     const bad = { ...seedWorkouts()[0], restBetweenSteps: 'lots' };

@@ -270,6 +270,17 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
             Until I stop
           </label>
         </div>
+        {w.mode !== 'amrap' && !locked && w.rounds !== 1 && (
+          <label className="check">
+            <input
+              type="checkbox"
+              aria-label="Wait for a tap between rounds"
+              checked={!!w.waitBetweenRounds}
+              onChange={(e) => update({ waitBetweenRounds: e.target.checked })}
+            />
+            Wait for a tap between rounds
+          </label>
+        )}
         {hasTap && (
           <fieldset className="advance">
             <legend className="field-label">Tap behaviour</legend>
