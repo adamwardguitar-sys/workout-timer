@@ -2,14 +2,12 @@
 
 A phone-first workout timer you can install to your home screen. Build a library of workouts, then train to them with a countdown and audio cues. Works offline, and on desktop too.
 
-## Modes
+## Two modes
 
-- **Interval**: a list of exercises, each timed (default 40s on, 20s off), for N rounds
-- **Tabata**: 20s on, 10s off, 8 rounds
-- **EMOM**: a new round every minute
-- **AMRAP**: one countdown, tap to count rounds
-- **Kettlebell Flow**: untimed exercises, tap **Done**, then a timed rest (default 2:00), repeating until you stop
-- **Custom**: any mix of timed and tap-to-finish steps
+- **Timer:** every exercise and rest is timed. It plays all the way through, every round, with no tapping at all. Set an exercise list, the time for each, a shared rest after each exercise (e.g. 40s on, 20s off), and the number of rounds (or Unlimited). Next exercise / Previous exercise move between exercises (skipping rests).
+- **Open-ended rounds:** the rounds have no times. Do each round at your own pace, tap **Round done**, then a rest timer runs and the next round starts. Rounds can be a number or until you stop. Good for kettlebell complexes.
+
+Quick presets for **Tabata** (20s on, 10s off, 8 rounds), **EMOM** (a new round every minute) and **AMRAP** (one countdown; tap +1 round each time you finish a round).
 
 Every workout has a configurable **get ready** countdown (30 seconds by default), your own work and rest steps, and a number of rounds (or "until I stop"). You can also pick the rounds, or Unlimited, on the screen you see before each workout starts. It starts with three workouts in the library: Full Body A and Full Body B (40s on, 20s off through the list) and Kettlebell Rounds (Athenian Complex).
 
@@ -20,8 +18,6 @@ Every workout you do is logged automatically, including ones you end early (anyt
 - **History tab:** this week's sessions and time, the last four weeks (with a per-week average), a 4-week activity grid (tap a day to see just that day), exercise weights over time (tap an exercise for its trend chart, with a table of every value), and every past session with its time, rounds, weights and an optional note.
 - **Weights:** tick **Track weight** on the exercises where it applies in the editor (unticked means N/A). When a workout ends you are asked for the weight for just those exercises, starting from what you lifted last time. You can add or edit weights on any past session. Choose kg or lb in Settings.
 - **Workout cards** show when you last did them and how many times. Backups include your history.
-
-An optional **Wait for a tap between rounds** setting (off by default) pauses at the start of each new round until you tap. You can switch it on in the editor or just for one run on the start screen.
 
 ## Install on your phone
 

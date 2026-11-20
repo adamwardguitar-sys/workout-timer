@@ -17,7 +17,8 @@ describe('formatTime', () => {
 
 describe('MODE_LABELS', () => {
   it('names every mode', () => {
-    expect(MODE_LABELS.flow).toBe('Kettlebell Flow');
+    expect(MODE_LABELS.interval).toBe('Timer');
+    expect(MODE_LABELS.flow).toBe('Open-ended rounds');
     expect(Object.keys(MODE_LABELS).sort()).toEqual(['amrap', 'custom', 'emom', 'flow', 'interval', 'tabata']);
   });
 });

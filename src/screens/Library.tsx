@@ -28,7 +28,8 @@ import { clearCorrupt, listCorrupt } from '../store/library';
 import { activityGrid, dayKey, thisWeek, workoutStats } from '../store/stats';
 import { saveTextFile } from '../util/download';
 
-const MODES: Mode[] = ['interval', 'tabata', 'emom', 'amrap', 'flow', 'custom'];
+const MAIN_MODES: Mode[] = ['interval', 'flow'];
+const PRESET_MODES: Mode[] = ['tabata', 'emom', 'amrap'];
 const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -286,7 +287,23 @@ export function Library({ navigate }: { navigate: Navigate }) {
           <div className="sheet" role="dialog" aria-label="Choose a mode" onClick={(e) => e.stopPropagation()}>
             <h2>Choose a mode</h2>
             <ul className="mode-list">
-              {MODES.map((m) => (
+              {MAIN_MODES.map((m) => (
+                <li key={m}>
+                  <button className="mode-option" onClick={() => create(m)}>
+                    <span className="mode-tile small" data-mode={m}>
+                      <Icon name={MODE_ICONS[m]} size={22} />
+                    </span>
+                    <span className="mode-text">
+                      <strong>{MODE_LABELS[m]}</strong>
+                      <span>{MODE_BLURBS[m]}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <h3 className="preset-title">Quick presets</h3>
+            <ul className="mode-list">
+              {PRESET_MODES.map((m) => (
                 <li key={m}>
                   <button className="mode-option" onClick={() => create(m)}>
                     <span className="mode-tile small" data-mode={m}>

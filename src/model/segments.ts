@@ -15,10 +15,6 @@ export function segmentsForRound(w: Workout, round: number): Segment[] {
   const push = (seg: Omit<Segment, 'id' | 'round'>) =>
     segs.push({ ...seg, id: `${round}:${segs.length}`, round });
 
-  if (w.waitBetweenRounds && round > 1) {
-    push({ role: 'rest', label: `Round ${round}`, seconds: null, gate: true });
-  }
-
   const stepRest = w.restBetweenSteps ?? 0;
   const paced = (s: Workout['steps'][number]) => s.role === 'work' && (s.kind === 'timed' || w.advance === 'step');
   let mergedEmitted = false;

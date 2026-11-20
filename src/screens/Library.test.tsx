@@ -27,18 +27,30 @@ describe('Library', () => {
     expect(screen.getByRole('button', { name: 'Kettlebell Rounds (Athenian Complex)' })).toBeInTheDocument();
   });
 
-  it('New workout offers the six modes and creates a template then opens its editor', async () => {
+  it('New workout offers two clear modes plus quick presets, and creates a template then opens its editor', async () => {
     const { navigate, user } = setup();
     await user.click(screen.getByRole('button', { name: 'New workout' }));
     const picker = screen.getByRole('dialog');
-    for (const m of ['Interval', 'Tabata', 'EMOM', 'AMRAP', 'Kettlebell Flow', 'Custom']) {
+    for (const m of ['Timer', 'Open-ended rounds', 'Tabata', 'EMOM', 'AMRAP']) {
       expect(within(picker).getByRole('button', { name: new RegExp(`^${m}`) })).toBeInTheDocument();
     }
+    expect(within(picker).queryByRole('button', { name: /^Custom/ })).not.toBeInTheDocument();
+    expect(within(picker).getByText('Quick presets')).toBeInTheDocument();
+    expect(within(picker).getByRole('button', { name: /^Timer/ })).toHaveTextContent(/no tapping/i);
+    expect(within(picker).getByRole('button', { name: /^Open-ended rounds/ })).toHaveTextContent(/tap/i);
     await user.click(within(picker).getByRole('button', { name: /^Tabata/ }));
     const ws = loadLibrary();
     expect(ws).toHaveLength(4);
     expect(ws[3].mode).toBe('tabata');
     expect(navigate).toHaveBeenCalledWith({ name: 'editor', id: ws[3].id });
+  });
+
+  it('Timer creates a timed list and Open-ended rounds creates an untimed one', async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole('button', { name: 'New workout' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Timer/ }));
+    expect(loadLibrary()[3]).toMatchObject({ mode: 'interval' });
+    expect(loadLibrary()[3].steps.every((x) => x.kind === 'timed')).toBe(true);
   });
 
   it('Duplicate adds a copy', async () => {

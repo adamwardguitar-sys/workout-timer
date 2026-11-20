@@ -151,19 +151,31 @@ export function undoLap(s: RunState): RunState {
   return { ...s, laps: Math.max(0, s.laps - 1) };
 }
 
-export function skip(s: RunState, now: number): Stepped {
+/** Jump to the next exercise (skipping any rest), or finish if there are no more. From a rest or get-ready it goes to the next exercise too. */
+export function nextExercise(s: RunState, now: number): Stepped {
   if (s.finished) return { state: s, events: [] };
-  const st = moveNext(s, s.pausedAt ?? now);
+  const t = s.pausedAt ?? now;
+  let st = moveNext(s, t);
+  let guard = 0;
+  while (!st.finished && currentSegment(st).role !== 'work' && ++guard < MAX_STALLED) st = moveNext(st, t);
   return { state: st, events: stepEvents(st) };
 }
 
-export function back(s: RunState, now: number): RunState {
+/**
+ * Back to the previous exercise (not its rest). If you are 2 seconds or more into an exercise, or
+ * there is no earlier exercise, it restarts the current one instead.
+ */
+export function previousExercise(s: RunState, now: number): RunState {
   if (s.finished) return s;
   const t = s.pausedAt ?? now;
-  if (t - s.segmentStart >= 2000 || s.index === 0) {
-    return { ...s, segmentStart: t, lastCountdown: null };
-  }
-  return { ...s, index: s.index - 1, segmentStart: t, lastCountdown: null };
+  const seg = currentSegment(s);
+  const restart = { ...s, segmentStart: t, lastCountdown: null };
+  if (seg.role === 'work' && t - s.segmentStart >= 2000) return restart;
+  if (seg.role === 'prep') return restart;
+  let j = s.index - 1;
+  while (j >= 0 && s.segments[j].role !== 'work') j--;
+  if (j < 0) return restart;
+  return { ...s, index: j, segmentStart: t, lastCountdown: null };
 }
 
 export function adjustSeconds(s: RunState, deltaSeconds: number, now: number): RunState {

@@ -52,13 +52,6 @@ describe('Editor basics', () => {
     expect(saved().rounds).toBeNull();
   });
 
-  it('switches between tap per exercise and tap once per round', async () => {
-    const { user, saved } = setup(seedWorkouts()[2]);
-    expect(screen.getByLabelText('Tap once per round')).toBeChecked();
-    await user.click(screen.getByLabelText('Tap per exercise'));
-    expect(saved().advance).toBe('step');
-  });
-
   it('shows not found for an unknown id', () => {
     saveLibrary([]);
     render(<Editor id="nope" navigate={vi.fn()} />);
@@ -218,26 +211,43 @@ describe('Editor number fields', () => {
   });
 });
 
-describe('Editor wait between rounds', () => {
-  it('can be switched on and off, and is off by default', async () => {
-    const { user, saved } = setup(templateFor('interval'));
-    const box = screen.getByLabelText('Wait for a tap between rounds');
-    expect(box).not.toBeChecked();
-    await user.click(box);
-    expect(saved().waitBetweenRounds).toBe(true);
-    await user.click(screen.getByLabelText('Wait for a tap between rounds'));
-    expect(saved().waitBetweenRounds).toBe(false);
+describe('Editor keeps the two modes simple', () => {
+  it('Timer steps are just a name and a time: no type or role pickers', () => {
+    setup(templateFor('interval'));
+    expect(screen.getByLabelText('Step 1 name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Step 1 time seconds')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Step 1 type')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Step 1 role')).not.toBeInTheDocument();
   });
 
-  it('is hidden when there is only one round, and for AMRAP and Tabata', () => {
-    const one = { ...templateFor('interval'), rounds: 1 };
-    const { } = setup(one);
+  it('Open-ended rounds steps are a name and reps: no time and no pickers', () => {
+    setup(seedWorkouts()[2]);
+    expect(screen.getByLabelText('Step 1 reps')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Step 1 time seconds')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Step 1 type')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Step 1 role')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['Timer', () => templateFor('interval')],
+    ['Open-ended rounds', () => seedWorkouts()[2]],
+  ])('%s has no tap-behaviour or wait-for-a-tap settings', (_name, make) => {
+    setup(make());
+    expect(screen.queryByLabelText('Tap per exercise')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Tap once per round')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
   });
 
-  it('is hidden for Tabata', () => {
-    setup(templateFor('tabata'));
-    expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
+  it('Open-ended rounds has a rest between rounds (the timer that runs after each round) and until-I-stop', () => {
+    setup(seedWorkouts()[2]);
+    expect(screen.getByLabelText('Rest between rounds seconds')).toBeInTheDocument();
+    expect(screen.getByLabelText('Until I stop')).toBeChecked();
+  });
+
+  it('the advanced Custom mode keeps the type and role pickers', () => {
+    setup(templateFor('custom'));
+    expect(screen.getByLabelText('Step 1 type')).toBeInTheDocument();
+    expect(screen.getByLabelText('Step 1 role')).toBeInTheDocument();
   });
 });
 

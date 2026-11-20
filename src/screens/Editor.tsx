@@ -63,12 +63,14 @@ interface RowProps {
   step: Step;
   n: number;
   amrap: boolean;
+  /** Show the step type and role pickers (only the advanced Custom mode and the locked Tabata). */
+  advanced: boolean;
   locked: boolean;
   onChange: (s: Step) => void;
   onRemove: () => void;
 }
 
-function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
+function StepRow({ step, n, amrap, advanced, locked, onChange, onRemove }: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: step.id,
     disabled: locked,
@@ -93,28 +95,32 @@ function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
           onChange={(e) => set({ label: e.target.value })}
         />
         <div className="step-options">
-          <select
-            aria-label={`Step ${n} type`}
-            disabled={locked}
-            value={step.kind}
-            onChange={(e) =>
-              e.target.value === 'tap'
-                ? set({ kind: 'tap' })
-                : set({ kind: 'timed', seconds: step.seconds ?? 30 })
-            }
-          >
-            <option value="timed">Timed</option>
-            <option value="tap">Tap when done</option>
-          </select>
-          <select
-            aria-label={`Step ${n} role`}
-            disabled={locked}
-            value={step.role}
-            onChange={(e) => set({ role: e.target.value as Step['role'] })}
-          >
-            <option value="work">Work</option>
-            <option value="rest">Rest</option>
-          </select>
+          {advanced && (
+            <>
+            <select
+              aria-label={`Step ${n} type`}
+              disabled={locked}
+              value={step.kind}
+              onChange={(e) =>
+                e.target.value === 'tap'
+                  ? set({ kind: 'tap' })
+                  : set({ kind: 'timed', seconds: step.seconds ?? 30 })
+              }
+            >
+              <option value="timed">Timed</option>
+              <option value="tap">Tap when done</option>
+            </select>
+            <select
+              aria-label={`Step ${n} role`}
+              disabled={locked}
+              value={step.role}
+              onChange={(e) => set({ role: e.target.value as Step['role'] })}
+            >
+              <option value="work">Work</option>
+              <option value="rest">Rest</option>
+            </select>
+            </>
+          )}
           {step.kind === 'timed' && (
             <TimeField
               compact
@@ -189,7 +195,6 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
   const update = (patch: Partial<Workout>) => lib.save({ ...w, ...patch });
   const setStep = (s: Step) => update({ steps: w.steps.map((x) => (x.id === s.id ? s : x)) });
   const errors = validateWorkout(w);
-  const hasTap = w.steps.some((s) => s.kind === 'tap');
   const locked = w.mode === 'tabata';
 
   const nameFix = () => {
@@ -278,42 +283,6 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
             Until I stop
           </label>
         </div>
-        {w.mode !== 'amrap' && !locked && w.rounds !== 1 && (
-          <label className="check">
-            <input
-              type="checkbox"
-              aria-label="Wait for a tap between rounds"
-              checked={!!w.waitBetweenRounds}
-              onChange={(e) => update({ waitBetweenRounds: e.target.checked })}
-            />
-            Wait for a tap between rounds
-          </label>
-        )}
-        {hasTap && (
-          <fieldset className="advance">
-            <legend className="field-label">Tap behaviour</legend>
-            <label className="check">
-              <input
-                type="radio"
-                name="advance"
-                aria-label="Tap per exercise"
-                checked={w.advance === 'step'}
-                onChange={() => update({ advance: 'step' })}
-              />
-              Tap per exercise
-            </label>
-            <label className="check">
-              <input
-                type="radio"
-                name="advance"
-                aria-label="Tap once per round"
-                checked={w.advance === 'round'}
-                onChange={() => update({ advance: 'round' })}
-              />
-              Tap once per round
-            </label>
-          </fieldset>
-        )}
       </div>
 
       <h2>Steps</h2>
@@ -326,6 +295,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
                 step={s}
                 n={i + 1}
                 amrap={w.mode === 'amrap'}
+                advanced={w.mode === 'custom' || w.mode === 'tabata'}
                 locked={locked}
                 onChange={setStep}
                 onRemove={() => update({ steps: w.steps.filter((x) => x.id !== s.id) })}

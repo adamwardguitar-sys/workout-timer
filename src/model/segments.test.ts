@@ -199,28 +199,6 @@ describe('restBetweenSteps (exercise list with a shared rest)', () => {
   });
 });
 
-describe('waitBetweenRounds (opt-in pause between rounds)', () => {
-  const w = (over: Partial<Workout> = {}) =>
-    wk({ steps: [timed('A', 40), timed('B', 40)], rounds: 3, waitBetweenRounds: true, ...over });
-
-  it('puts a tap-to-continue gate at the start of every round after the first', () => {
-    expect(segmentsForRound(w(), 1).some((x) => x.gate)).toBe(false);
-    const r2 = segmentsForRound(w(), 2);
-    expect(r2[0]).toMatchObject({ role: 'rest', label: 'Round 2', seconds: null, gate: true, round: 2 });
-    expect(r2).toHaveLength(3);
-    expect(segmentsForRound(w(), 3)[0]).toMatchObject({ label: 'Round 3', gate: true });
-  });
-
-  it('also applies when rounds is until-I-stop', () => {
-    expect(segmentsForRound(w({ rounds: null }), 7)[0]).toMatchObject({ label: 'Round 7', gate: true });
-  });
-
-  it('is off by default and when false', () => {
-    expect(segmentsForRound(w({ waitBetweenRounds: undefined }), 2).some((x) => x.gate)).toBe(false);
-    expect(segmentsForRound(w({ waitBetweenRounds: false }), 2).some((x) => x.gate)).toBe(false);
-  });
-});
-
 describe('estimateSeconds', () => {
   it('adds up get-ready, work and rests across all rounds for a fixed-length workout', () => {
     // 30 get-ready + 3 exercises x 40 + 2 rests x 20 = 190 (the last rest is dropped)

@@ -13,11 +13,11 @@ const timed = (label: string, seconds: number, role: Step['role'] = 'work', coun
 const tap = (label: string): Step => ({ id: newId(), label, kind: 'tap', role: 'work' });
 
 const NAMES: Record<Mode, string> = {
-  interval: 'New Interval workout',
+  interval: 'New timer workout',
   tabata: 'New Tabata',
   emom: 'New EMOM',
   amrap: 'New AMRAP',
-  flow: 'New Kettlebell Flow',
+  flow: 'New open-ended rounds workout',
   custom: 'New Custom workout',
 };
 

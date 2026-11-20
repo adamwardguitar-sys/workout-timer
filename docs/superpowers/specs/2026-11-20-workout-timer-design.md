@@ -50,6 +50,16 @@ Owner asked for a professional, simple timer *and tracker*, leaving the product 
 
 Tapping an exercise in History's *Exercise weights* opens a single-series line chart of its logged weights (one open at a time; exercises logged once have nothing to chart yet). Built to the data-viz guidance: 2px line, ringed 5px markers, hairline solid grid, round axis ticks, only the latest value labelled (text colour, never the series colour), tooltip on hover and keyboard focus with the value first, hit areas of at least 24px, and a "Show data" table of every value. The mark colour `#10a28d` is a deeper spearmint that passes the dark-mode palette validator (the brighter brand accent is too light for chart marks).
 
+## Revision 6 (2026-11-20): two clear modes
+
+After use, the six modes and the wait-for-a-tap setting were confusing. Simplified:
+
+- **Timer** (`interval`): everything is timed and it plays through every round with no tapping, ever. Previous/Next *exercise* skip rests (Skip rest during a rest, Skip get ready during get-ready). No type or role pickers on steps.
+- **Open-ended rounds** (`flow`): untimed rounds; one tap (**Round done**) ends a round, then the rest timer, then the next round. Previous/Next are hidden on the round (they would skip the whole round); Skip rest is available during the rest.
+- **Quick presets**: Tabata, EMOM, AMRAP. Custom remains for existing workouts (it keeps the type/role pickers) but is no longer offered for new ones.
+- **Removed**: the *wait for a tap between rounds* option (gate), the per-exercise vs per-round tap setting, and the old Skip/Back engine functions (replaced by `nextExercise`/`previousExercise`).
+- The start screen says in one line whether you will need to tap anything.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.

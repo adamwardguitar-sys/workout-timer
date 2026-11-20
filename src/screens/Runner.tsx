@@ -6,13 +6,13 @@ import { WeightFields } from '../components/WeightFields';
 import { createSound, type Sound } from '../audio/sound';
 import {
   adjustSeconds,
-  back,
   currentSegment,
   done,
   pause,
   remainingMs,
   resume,
-  skip,
+  nextExercise,
+  previousExercise,
   startRun,
   summarize,
   undoLap,
@@ -24,7 +24,7 @@ import { useLibrary } from '../hooks/useLibrary';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatDuration, formatTime } from '../model/format';
 import { segmentsForRound, validateWorkout } from '../model/segments';
-import type { Segment } from '../model/types';
+import type { Segment, Workout } from '../model/types';
 import type { Navigate } from '../route';
 import { clearActiveRun, loadActiveRun, saveActiveRun } from '../store/activeRun';
 import {
@@ -49,6 +49,16 @@ function nextSegment(run: RunState): Segment | undefined {
 
 function nextText(seg: Segment): string {
   return seg.items && seg.itemIndex === undefined ? `Round ${seg.round}` : seg.label;
+}
+
+/** One line on the start screen saying whether you will need to tap anything. */
+function startHint(w: Workout): string {
+  const timed = w.steps.some((s) => s.kind === 'timed');
+  const taps = w.steps.some((s) => s.kind === 'tap');
+  if (w.steps.some((s) => s.counter)) return 'Tap "+1 round" each time you finish a round.';
+  if (!timed) return w.advance === 'step' ? 'Tap "Done" after each exercise.' : 'Tap "Round done" at the end of each round.';
+  if (taps) return 'Plays through on its own. Tap "Done" on steps that have no time.';
+  return 'Plays all the way through. No tapping needed.';
 }
 
 function itemText(i: { label: string; reps?: number }): string {
@@ -92,7 +102,6 @@ export function Runner({
   const [weightValues, setWeightValues] = useState<Record<string, number | undefined>>({});
   // rounds picked on the start screen for this run only ('saved' = use the workout's own setting)
   const [roundsChoice, setRoundsChoice] = useState<number | null | 'saved'>('saved');
-  const [waitChoice, setWaitChoice] = useState<boolean | 'saved'>('saved');
 
   useEffect(() => () => void sound.close(), [sound]);
 
@@ -189,13 +198,12 @@ export function Runner({
   };
 
   const chosenRounds = roundsChoice === 'saved' ? workout.rounds : roundsChoice;
-  const chosenWait = waitChoice === 'saved' ? !!workout.waitBetweenRounds : waitChoice;
   const canChooseRounds = workout.mode !== 'amrap' && workout.mode !== 'tabata';
 
   function begin() {
     void sound.unlock();
     try {
-      const st = startRun({ ...workout!, rounds: chosenRounds, waitBetweenRounds: chosenWait }, Date.now(), settings.beepSeconds);
+      const st = startRun({ ...workout!, rounds: chosenRounds }, Date.now(), settings.beepSeconds);
       setNeedsTap(false);
       apply(st, [{ type: 'segment-start', segment: currentSegment(st) }]);
     } catch (e) {
@@ -203,13 +211,13 @@ export function Runner({
     }
   }
 
-  function onSkip() {
+  function onNext() {
     if (!allowTap()) return;
     const cur = runRef.current;
     if (!cur) return;
-    // skipping the last step ends the workout: make sure that is what was meant
-    if (skip(cur, Date.now()).state.finished && !window.confirm('Finish the workout now?')) return;
-    act(skip);
+    // moving past the last exercise ends the workout: make sure that is what was meant
+    if (nextExercise(cur, Date.now()).state.finished && !window.confirm('Finish the workout now?')) return;
+    act(nextExercise);
   }
 
   function quit() {
@@ -233,6 +241,7 @@ export function Runner({
         <p className="muted">
           {workout.steps.length} steps · get ready {formatTime(workout.prepSeconds)}
         </p>
+        <p className="muted hint">{startHint(workout)}</p>
         {canChooseRounds && (
           <div className="start-options">
             <span className="field-label">Rounds</span>
@@ -255,17 +264,6 @@ export function Runner({
               </label>
             </div>
           </div>
-        )}
-        {canChooseRounds && chosenRounds !== 1 && (
-          <label className="check">
-            <input
-              type="checkbox"
-              aria-label="Wait for a tap between rounds"
-              checked={chosenWait}
-              onChange={(e) => setWaitChoice(e.target.checked)}
-            />
-            Wait for a tap between rounds
-          </label>
         )}
         {(errors.length > 0 || startError) && (
           <ul className="errors">
@@ -359,6 +357,20 @@ export function Runner({
   const ms = remainingMs(run, now);
   const next = nextSegment(run);
   const paused = run.pausedAt !== null;
+  const isTimed = seg.seconds !== null;
+  const hasTimedSteps = workout.steps.some((x) => x.kind === 'timed');
+  const canPause = isTimed;
+  // Previous/next are about exercises, so they only exist where there are timed exercises to move between
+  const showPrev = isTimed && hasTimedSteps && !seg.counter && seg.role !== 'prep';
+  const nextLabel = !isTimed
+    ? null
+    : seg.role === 'prep'
+      ? 'Skip get ready'
+      : seg.counter
+        ? 'Finish now'
+        : seg.role === 'rest'
+          ? 'Skip rest'
+          : 'Next exercise';
   const roundLabel =
     seg.counter || seg.round === 0 || workout.rounds === 1
       ? null
@@ -397,9 +409,8 @@ export function Runner({
         {seg.role === 'prep' ? (
           <div className="run-label">Get ready</div>
         ) : (
-          (seg.seconds !== null || seg.gate) && <div className="run-label">{seg.label}</div>
+          seg.seconds !== null && <div className="run-label">{seg.label}</div>
         )}
-        {seg.gate && <div className="muted">Ready when you are</div>}
         {ms !== null && (
           <div className="clock num" data-testid="clock">
             {formatTime(Math.ceil(ms / 1000))}
@@ -435,7 +446,7 @@ export function Runner({
         )}
         {seg.seconds === null && !seg.counter && (
           <button className="btn primary huge" onClick={() => allowTap() && act(done)}>
-            {seg.gate ? `Start round ${seg.round}` : 'Done'}
+            {seg.items && seg.itemIndex === undefined ? 'Round done' : 'Done'}
           </button>
         )}
         {seg.role === 'rest' && seg.seconds !== null && (
@@ -452,17 +463,35 @@ export function Runner({
 
       {next && <div className="run-next muted">Next: {nextText(next)}</div>}
 
-      <footer className="run-controls">
-        <button className="btn" aria-label="Previous" onClick={() => allowTap() && act((r, n) => back(r, n))}>
-          <Icon name="prev" />
-        </button>
-        <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
-          {paused ? 'Resume' : 'Pause'}
-        </button>
-        <button className="btn" aria-label="Skip" onClick={onSkip}>
-          <Icon name="next" />
-        </button>
-      </footer>
+      {(canPause || nextLabel) && (
+        <footer className="run-controls">
+          {showPrev ? (
+            <button
+              className="btn"
+              aria-label="Previous exercise"
+              onClick={() => allowTap() && act((r, n) => previousExercise(r, n))}
+            >
+              <Icon name="prev" />
+            </button>
+          ) : (
+            <span />
+          )}
+          {canPause ? (
+            <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
+              {paused ? 'Resume' : 'Pause'}
+            </button>
+          ) : (
+            <span />
+          )}
+          {nextLabel ? (
+            <button className="btn" aria-label={nextLabel} onClick={onNext}>
+              <Icon name="next" />
+            </button>
+          ) : (
+            <span />
+          )}
+        </footer>
+      )}
     </section>
   );
 }

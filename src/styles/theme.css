@@ -326,3 +326,4 @@ button.progress-row[aria-expanded='true']::after { content: 'Hide trend'; }
 .data-view td { color: var(--text); }
 .chart .end-label { paint-order: stroke; stroke: var(--chart-surface); stroke-width: 4px; stroke-linejoin: round; }
 .chart-frame { max-width: 520px; }
+.preset-title { margin: 12px 0 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }

@@ -1,20 +1,20 @@
 import type { Mode } from './types';
 
 export const MODE_LABELS: Record<Mode, string> = {
-  interval: 'Interval',
+  interval: 'Timer',
   tabata: 'Tabata',
   emom: 'EMOM',
   amrap: 'AMRAP',
-  flow: 'Kettlebell Flow',
+  flow: 'Open-ended rounds',
   custom: 'Custom',
 };
 
 export const MODE_BLURBS: Record<Mode, string> = {
-  interval: 'Work and rest, repeated',
+  interval: 'Timed exercises and rests. Plays through every round on its own, no tapping.',
+  flow: 'No times: do each round at your own pace, tap when it is done, then rest.',
   tabata: '20s on, 10s off, 8 rounds',
   emom: 'A new round every minute',
-  amrap: 'As many rounds as you can',
-  flow: 'Tap when done, then rest',
+  amrap: 'As many rounds as you can in the time',
   custom: 'Build any sequence',
 };
 
