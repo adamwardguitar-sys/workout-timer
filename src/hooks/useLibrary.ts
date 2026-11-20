@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { newId } from '../model/id';
 import type { Workout } from '../model/types';
-import { loadLibrary, mergeImport, saveLibrary } from '../store/library';
+import { LIBRARY_KEY, loadLibrary, mergeImport, saveLibrary } from '../store/library';
 
 export interface LibraryApi {
   workouts: Workout[];
@@ -9,21 +9,29 @@ export interface LibraryApi {
   remove(id: string): void;
   duplicate(id: string): void;
   move(from: number, to: number): void;
-  importMerge(incoming: Workout[]): void;
+  /** Adds the workouts you do not already have; returns how many were added. */
+  importMerge(incoming: Workout[]): number;
 }
 
 /**
- * Every change is written to storage immediately (not in an effect), so a screen
- * that unmounts in the same tick as a save, e.g. create-then-navigate, cannot lose it.
+ * Every change is applied to what is in storage right now (so another open tab's edits are never
+ * overwritten) and written back immediately (so a screen that unmounts in the same tick cannot lose it).
  */
 export function useLibrary(): LibraryApi {
   const [workouts, setWorkouts] = useState<Workout[]>(() => loadLibrary());
-  const latest = useRef(workouts);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key === LIBRARY_KEY) setWorkouts(loadLibrary());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   const commit = useCallback((update: (ws: Workout[]) => Workout[]) => {
-    const next = update(latest.current);
-    if (next === latest.current) return;
-    latest.current = next;
+    const current = loadLibrary();
+    const next = update(current);
+    if (next === current) return;
     saveLibrary(next);
     setWorkouts(next);
   }, []);
@@ -66,7 +74,15 @@ export function useLibrary(): LibraryApi {
   );
 
   const importMerge = useCallback(
-    (incoming: Workout[]) => commit((ws) => mergeImport(ws, incoming)),
+    (incoming: Workout[]) => {
+      let added = 0;
+      commit((ws) => {
+        const merged = mergeImport(ws, incoming);
+        added = merged.length - ws.length;
+        return merged;
+      });
+      return added;
+    },
     [commit],
   );
 

@@ -37,11 +37,16 @@ export function Settings({ navigate }: { navigate: Navigate }) {
       setNotice({ kind: 'error', text: result.error });
       return;
     }
-    lib.importMerge(result.workouts);
-    const { added } = importSessions(result.history);
-    const n = result.workouts.length;
-    const sessions = added > 0 ? ` and ${added} ${added === 1 ? 'session' : 'sessions'}` : '';
-    setNotice({ kind: 'ok', text: `Imported ${n} ${n === 1 ? 'workout' : 'workouts'}${sessions}` });
+    const addedWorkouts = lib.importMerge(result.workouts);
+    const { added: addedSessions } = importSessions(result.history);
+    if (addedWorkouts === 0 && addedSessions === 0) {
+      setNotice({ kind: 'ok', text: 'Nothing new to import: you already have all of those.' });
+      return;
+    }
+    const parts = [];
+    if (addedWorkouts > 0) parts.push(`${addedWorkouts} ${addedWorkouts === 1 ? 'workout' : 'workouts'}`);
+    if (addedSessions > 0) parts.push(`${addedSessions} ${addedSessions === 1 ? 'session' : 'sessions'}`);
+    setNotice({ kind: 'ok', text: `Imported ${parts.join(' and ')}` });
   }
 
   return (

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { useLibrary } from './useLibrary';
-import { loadLibrary } from '../store/library';
+import { LIBRARY_KEY, loadLibrary, saveLibrary } from '../store/library';
 import { seedWorkouts } from '../store/seed';
 
 beforeEach(() => localStorage.clear());
@@ -51,7 +51,9 @@ describe('useLibrary', () => {
 
   it('importMerge appends incoming workouts', () => {
     const { result } = renderHook(() => useLibrary());
-    act(() => result.current.importMerge(seedWorkouts().slice(0, 2)));
+    act(() => {
+      result.current.importMerge(seedWorkouts().slice(0, 2).map((w, i) => ({ ...w, name: `Imported ${i}` })));
+    });
     expect(result.current.workouts).toHaveLength(5);
   });
 
@@ -74,5 +76,37 @@ describe('useLibrary', () => {
     });
     expect(result.current.workouts).toHaveLength(1);
     expect(loadLibrary()).toHaveLength(1);
+  });
+
+  it('does not overwrite changes made in another tab', () => {
+    const { result } = renderHook(() => useLibrary());
+    const [a] = result.current.workouts;
+    // another tab adds a workout
+    saveLibrary([...loadLibrary(), { ...a, id: 'from-other-tab', name: 'Other tab' }]);
+    act(() => result.current.save({ ...a, name: 'Renamed here' }));
+    expect(loadLibrary().map((w) => w.name)).toContain('Other tab');
+    expect(loadLibrary().find((w) => w.id === a.id)?.name).toBe('Renamed here');
+    expect(result.current.workouts.map((w) => w.name)).toContain('Other tab');
+  });
+
+  it('refreshes when another tab changes the library', () => {
+    const { result } = renderHook(() => useLibrary());
+    const [a] = result.current.workouts;
+    saveLibrary([...loadLibrary(), { ...a, id: 'from-other-tab', name: 'Other tab' }]);
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: LIBRARY_KEY }));
+    });
+    expect(result.current.workouts.map((w) => w.name)).toContain('Other tab');
+  });
+
+  it('importMerge returns how many workouts were actually added and skips ones you already have', () => {
+    const { result } = renderHook(() => useLibrary());
+    const [a, b] = result.current.workouts;
+    let added = -1;
+    act(() => {
+      added = result.current.importMerge([{ ...a, id: 'copy-of-a' }, { ...b, id: 'new-b', name: 'Different' }]);
+    });
+    expect(added).toBe(1);
+    expect(result.current.workouts).toHaveLength(4);
   });
 });

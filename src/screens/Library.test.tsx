@@ -112,7 +112,7 @@ describe('Library', () => {
     saveActiveRun(startRun(w, Date.now()));
     const { navigate, user } = setup();
     await user.click(screen.getByRole('button', { name: /Resume workout/ }));
-    expect(navigate).toHaveBeenCalledWith({ name: 'run', id: w.id });
+    expect(navigate).toHaveBeenCalledWith({ name: 'run', id: w.id, resume: true });
   });
 
   it('shows no resume banner when there is no saved run', () => {

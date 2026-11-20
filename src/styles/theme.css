@@ -207,3 +207,4 @@ select {
 }
 .card-title { min-height: 44px; display: inline-flex; align-items: center; }
 .handle { min-width: 44px; }
+.lap-controls { display: grid; gap: 10px; justify-items: center; width: 100%; }

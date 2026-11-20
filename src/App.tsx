@@ -18,7 +18,7 @@ export function App() {
     <main className={`app${showTabs ? ' with-tabs' : ''}`}>
       {route.name === 'library' && <Library navigate={navigate} />}
       {route.name === 'editor' && <Editor id={route.id} navigate={navigate} />}
-      {route.name === 'run' && <Runner id={route.id} navigate={navigate} />}
+      {route.name === 'run' && <Runner id={route.id} resume={route.resume} navigate={navigate} />}
       {route.name === 'history' && <History />}
       {route.name === 'settings' && <Settings navigate={navigate} />}
       {showTabs && <TabBar route={route} navigate={navigate} />}

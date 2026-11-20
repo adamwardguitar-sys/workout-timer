@@ -1,4 +1,4 @@
-// Dev-only: renders public/icon.svg and public/icon-maskable.svg to the PNG sizes the manifest needs.
+// Requires Playwright (npm i -D playwright). Dev-only: renders public/icon.svg and public/icon-maskable.svg to the PNG sizes the manifest needs.
 const { chromium } = require('playwright');
 const { readFileSync } = require('node:fs');
 

@@ -8,6 +8,8 @@ export interface Sound {
   setVibrate(on: boolean): void;
   /** False only when an audio context exists, sound is on, and the browser has suspended or interrupted it. */
   running(): boolean;
+  /** Release the audio context (call when leaving the screen). A later unlock() makes a new one. */
+  close(): Promise<void>;
 }
 
 interface Tone {
@@ -121,6 +123,16 @@ export function createSound(opts: { ctxFactory?: () => AudioContext } = {}): Sou
     },
     running() {
       return !enabled || !ctx || ctx.state === 'running';
+    },
+    async close() {
+      const old = ctx;
+      ctx = null;
+      master = null;
+      try {
+        await old?.close();
+      } catch {
+        /* already closed */
+      }
     },
   };
 }

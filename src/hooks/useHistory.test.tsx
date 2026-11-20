@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { useHistory } from './useHistory';
-import { loadHistory, type Session } from '../store/history';
+import { HISTORY_KEY, addSession, loadHistory, type Session } from '../store/history';
 
 const sess = (id: string): Session => ({
   id,
@@ -29,5 +29,14 @@ describe('useHistory', () => {
     expect(result.current.sessions.find((s) => s.id === 'a')?.note).toBe('good');
     act(() => result.current.remove('b'));
     expect(result.current.sessions.map((s) => s.id)).toEqual(['a']);
+  });
+
+  it('refreshes when another tab logs a session', () => {
+    const { result } = renderHook(() => useHistory());
+    addSession(sess('from-other-tab'));
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: HISTORY_KEY }));
+    });
+    expect(result.current.sessions.map((s) => s.id)).toEqual(['from-other-tab']);
   });
 });

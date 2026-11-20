@@ -227,12 +227,23 @@ export function parseImport(json: string): ImportResult {
   return { ok: true, workouts: d.workouts, history };
 }
 
+/** What makes two workouts "the same" for import: everything except the ids. */
+function contentKey(w: Workout): string {
+  return JSON.stringify({ ...w, id: undefined, steps: w.steps.map((x) => ({ ...x, id: undefined })) });
+}
+
+/** Adds the workouts you do not already have (compared by content, so re-importing a backup adds nothing). */
 export function mergeImport(existing: Workout[], incoming: Workout[]): Workout[] {
   const used = new Set(existing.map((w) => w.id));
-  const added = incoming.map((w) => {
+  const seen = new Set(existing.map(contentKey));
+  const added: Workout[] = [];
+  for (const w of incoming) {
+    const key = contentKey(w);
+    if (seen.has(key)) continue;
+    seen.add(key);
     const id = used.has(w.id) ? newId() : w.id;
     used.add(id);
-    return { ...w, id };
-  });
-  return [...existing, ...added];
+    added.push({ ...w, id });
+  }
+  return added.length > 0 ? [...existing, ...added] : existing;
 }

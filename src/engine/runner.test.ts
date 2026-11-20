@@ -9,6 +9,7 @@ import {
   skip,
   startRun,
   summarize,
+  undoLap,
   update,
   type RunEvent,
 } from './runner';
@@ -278,5 +279,42 @@ describe('waiting between rounds', () => {
     const go = done(later.state, T0 + s(5000));
     expect(currentSegment(go.state)).toMatchObject({ label: 'Work', round: 2 });
     expect(remainingMs(go.state, T0 + s(5000))).toBe(s(40));
+  });
+});
+
+describe('long gaps and short segments', () => {
+  it('keeps an until-I-stop workout going after a long gap, even with 1 second steps', () => {
+    const r = startRun(wk({ steps: [timed('Go', 1)], rounds: null }), T0);
+    const out = update(r, T0 + s(3 * 3600));
+    expect(out.state.finished).toBe(false);
+    expect(out.state.round).toBe(10801);
+    expect(remainingMs(out.state, T0 + s(3 * 3600))).toBe(s(1));
+  });
+
+  it('a segment as short as the beep window does not beep on its first tick', () => {
+    const r = startRun(wk({ steps: [timed('Quick', 3), timed('Long', 30)], rounds: 1 }), T0);
+    const counts = (t: number) =>
+      update(r, T0 + t).events.filter((e) => e.type === 'countdown').map((e) => (e as { secondsLeft: number }).secondsLeft);
+    expect(counts(0)).toEqual([]);
+    expect(counts(s(1))).toEqual([2]);
+    expect(counts(s(2))).toEqual([1]);
+  });
+
+  it('a 2 second segment only beeps for its last second', () => {
+    const r = startRun(wk({ steps: [timed('Blink', 2)], rounds: 1 }), T0);
+    const first = update(r, T0).events.filter((e) => e.type === 'countdown');
+    expect(first).toEqual([]);
+    expect(update(r, T0 + s(1)).events).toEqual([{ type: 'countdown', secondsLeft: 1 }]);
+  });
+});
+
+describe('undoLap', () => {
+  it('removes a lap but never goes below zero', () => {
+    const amrap = wk({ steps: [timed('AMRAP', 600, 'work', true)], rounds: 1 });
+    let st = done(done(startRun(amrap, T0), T0 + s(10)).state, T0 + s(20)).state;
+    expect(st.laps).toBe(2);
+    st = undoLap(st);
+    expect(st.laps).toBe(1);
+    expect(undoLap(undoLap(st)).laps).toBe(0);
   });
 });

@@ -26,6 +26,9 @@ class FakeCtx {
   resume = vi.fn(async () => {
     this.state = 'running';
   });
+  close = vi.fn(async () => {
+    this.state = 'closed';
+  });
   createOscillator() {
     const o = new FakeOsc();
     this.oscillators.push(o);
@@ -158,5 +161,33 @@ describe('createSound', () => {
     await sound.unlock();
     expect(audioSession.type).toBe('playback');
     delete (navigator as { audioSession?: unknown }).audioSession;
+  });
+
+  it('close() releases the audio context, and a later unlock makes a fresh one', async () => {
+    let made = 0;
+    const ctxs: FakeCtx[] = [];
+    const sound = createSound({
+      ctxFactory: () => {
+        made++;
+        const c = new FakeCtx();
+        ctxs.push(c);
+        return c as unknown as AudioContext;
+      },
+    });
+    await sound.unlock();
+    await sound.close();
+    expect(ctxs[0].close).toHaveBeenCalled();
+    expect(sound.running()).toBe(true); // nothing left to resume
+    sound.play('beep');
+    expect(ctxs[0].oscillators).toHaveLength(0);
+    await sound.unlock();
+    expect(made).toBe(2);
+    sound.play('beep');
+    expect(ctxs[1].oscillators).toHaveLength(1);
+  });
+
+  it('close() before unlock is harmless', async () => {
+    const { sound } = setup();
+    await expect(sound.close()).resolves.toBeUndefined();
   });
 });

@@ -69,7 +69,7 @@ describe('Settings backup', () => {
 
   it('Import adds the workouts from a valid file and says how many', async () => {
     const { user } = setup();
-    const other = loadLibrary().slice(0, 2);
+    const other = loadLibrary().slice(0, 2).map((w, i) => ({ ...w, id: `imp-${i}`, name: `${w.name} (imported)` }));
     await upload(user, exportLibrary(other));
     expect(await screen.findByText('Imported 2 workouts')).toBeInTheDocument();
     expect(loadLibrary()).toHaveLength(5);
@@ -121,9 +121,18 @@ describe('Settings backup', () => {
   it('Import brings in sessions as well as workouts, without duplicating ones you have', async () => {
     addSession(session('h1'));
     const { user } = setup();
-    const file = exportLibrary(loadLibrary().slice(0, 1), [session('h1'), session('h2'), session('h3')]);
+    const one = { ...loadLibrary()[0], id: 'imp-1', name: 'Imported one' };
+    const file = exportLibrary([one], [session('h1'), session('h2'), session('h3')]);
     await upload(user, file);
     expect(await screen.findByText('Imported 1 workout and 2 sessions')).toBeInTheDocument();
     expect(loadHistory().map((s) => s.id)).toEqual(['h1', 'h2', 'h3']);
+  });
+
+  it('importing a backup you already have says there is nothing new, and does not duplicate', async () => {
+    const { user } = setup();
+    const file = exportLibrary(loadLibrary(), []);
+    await upload(user, file);
+    expect(await screen.findByText(/Nothing new to import/)).toBeInTheDocument();
+    expect(loadLibrary()).toHaveLength(3);
   });
 });

@@ -21,7 +21,10 @@ An optional **Wait for a tap between rounds** setting (off by default) pauses at
 
 ## Install on your phone
 
-Open the site in Safari (iPhone) or Chrome (Android), then **Share → Add to Home Screen**. It opens full screen and works offline.
+**iPhone:** open the site in Safari, then **Share → Add to Home Screen**.
+**Android:** open it in Chrome, then the **⋮** menu → **Install app** (or **Add to Home screen**).
+
+It opens full screen and works offline, and updates itself when a new version is published.
 
 ## Things to know
 
@@ -41,7 +44,7 @@ npm run preview  # serve the build at http://localhost:4173/workout-timer/
 
 Stack: React, TypeScript, Vite, `vite-plugin-pwa`, Vitest. The timer engine (`src/engine/runner.ts`) is pure and clock-based, so it stays correct when the page is throttled.
 
-`scripts/shots.cjs` and `scripts/icons.cjs` are dev-only helpers (Playwright) for screenshots and icon generation.
+`scripts/shots.cjs` and `scripts/icons.cjs` are dev-only helpers for screenshots and icon generation. They need Playwright (`npm i -D playwright`, then `npx playwright install chromium`) and are not part of the app.
 
 ## Deploy
 

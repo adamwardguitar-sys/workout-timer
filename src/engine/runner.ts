@@ -31,8 +31,8 @@ export interface Stepped {
   events: RunEvent[];
 }
 
-/** Hard stop so a malformed segment list can never spin forever in one update. */
-const MAX_ADVANCES = 10_000;
+/** A run of zero-length segments this long means the segment list is malformed; stop rather than spin. */
+const MAX_STALLED = 1_000;
 
 export function startRun(w: Workout, now: number, beepSeconds = 3): RunState {
   const errors = validateWorkout(w);
@@ -89,15 +89,19 @@ export function update(s: RunState, now: number): Stepped {
 
   let st = s;
   let advanced = false;
-  let guard = 0;
+  let stalled = 0; // consecutive advances that took no time
   while (!st.finished) {
     const seg = currentSegment(st);
     if (seg.seconds === null) break;
     const end = st.segmentStart + seg.seconds * 1000;
     if (now < end) break;
-    if (++guard > MAX_ADVANCES) {
-      st = { ...st, finished: true, endedAt: now };
-      break;
+    if (end <= st.segmentStart) {
+      if (++stalled > MAX_STALLED) {
+        st = { ...st, finished: true, endedAt: now };
+        break;
+      }
+    } else {
+      stalled = 0;
     }
     st = moveNext(st, end);
     advanced = true;
@@ -114,7 +118,8 @@ export function update(s: RunState, now: number): Stepped {
   if (seg.seconds !== null) {
     const left = Math.ceil((st.segmentStart + seg.seconds * 1000 - now) / 1000);
     const fresh = st.lastCountdown === null || left < st.lastCountdown;
-    if (left >= 1 && left <= st.beepSeconds && fresh) {
+    // no beep for the very first second of a segment: it would sit on top of the start tone
+    if (left >= 1 && left <= st.beepSeconds && left < seg.seconds && fresh) {
       events.push({ type: 'countdown', secondsLeft: left });
       st = { ...st, lastCountdown: left };
     }
@@ -140,6 +145,10 @@ export function done(s: RunState, now: number): Stepped {
   if (seg.seconds !== null) return { state: s, events: [] };
   const st = moveNext(s, now);
   return { state: st, events: stepEvents(st) };
+}
+
+export function undoLap(s: RunState): RunState {
+  return { ...s, laps: Math.max(0, s.laps - 1) };
 }
 
 export function skip(s: RunState, now: number): Stepped {

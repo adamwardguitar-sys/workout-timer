@@ -1,4 +1,4 @@
-// Dev-only: screenshots of the built app for visual review. Usage: node scripts/shots.cjs <outDir>
+// Requires Playwright (npm i -D playwright). Dev-only: screenshots of the built app for visual review. Usage: node scripts/shots.cjs <outDir>
 const { chromium } = require('playwright');
 const { mkdirSync } = require('node:fs');
 

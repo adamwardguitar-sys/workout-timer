@@ -13,6 +13,7 @@ import {
   skip,
   startRun,
   summarize,
+  undoLap,
   update,
   type RunEvent,
   type RunState,
@@ -43,16 +44,36 @@ function itemText(i: { label: string; reps?: number }): string {
   return i.reps ? `${i.reps} ${i.label}` : i.label;
 }
 
-export function Runner({ id, navigate, sound: injected }: { id: string; navigate: Navigate; sound?: Sound }) {
+export function Runner({
+  id,
+  navigate,
+  sound: injected,
+  resume: resumeSaved = false,
+}: {
+  id: string;
+  navigate: Navigate;
+  sound?: Sound;
+  /** Pick up the saved, interrupted run instead of showing the start screen. */
+  resume?: boolean;
+}) {
   const lib = useLibrary();
   const [sound] = useState<Sound>(() => injected ?? createSound());
   const [settings] = useState(() => loadSettings());
 
   const [run, setRun] = useState<RunState | null>(() => {
+    if (!resumeSaved) return null;
     const saved = loadActiveRun();
     return saved && saved.workout.id === id ? update(saved, Date.now()).state : null;
   });
   const runRef = useRef<RunState | null>(run);
+  const lastTap = useRef(0);
+  /** Ignore a control tap that follows another within 400 ms: sweaty-hand double taps. */
+  const allowTap = () => {
+    const t = Date.now();
+    if (t - lastTap.current < 400) return false;
+    lastTap.current = t;
+    return true;
+  };
   const [needsTap, setNeedsTap] = useState(run !== null);
   const [, setFrame] = useState(0);
   const [startError, setStartError] = useState<string | null>(null);
@@ -60,6 +81,8 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   // rounds picked on the start screen for this run only ('saved' = use the workout's own setting)
   const [roundsChoice, setRoundsChoice] = useState<number | null | 'saved'>('saved');
   const [waitChoice, setWaitChoice] = useState<boolean | 'saved'>('saved');
+
+  useEffect(() => () => void sound.close(), [sound]);
 
   useEffect(() => {
     sound.setVolume(settings.volume);
@@ -144,6 +167,15 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
     } catch (e) {
       setStartError(e instanceof Error ? e.message : 'Could not start this workout.');
     }
+  }
+
+  function onSkip() {
+    if (!allowTap()) return;
+    const cur = runRef.current;
+    if (!cur) return;
+    // skipping the last step ends the workout: make sure that is what was meant
+    if (skip(cur, Date.now()).state.finished && !window.confirm('Finish the workout now?')) return;
+    act(skip);
   }
 
   function quit() {
@@ -335,21 +367,28 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
         )}
 
         {seg.counter && (
-          <button className="btn primary huge" onClick={() => act(done)}>
-            +1 round
-          </button>
+          <div className="lap-controls">
+            <button className="btn primary huge" onClick={() => allowTap() && act(done)}>
+              +1 round
+            </button>
+            {run.laps > 0 && (
+              <button className="btn" onClick={() => allowTap() && act((r) => undoLap(r))}>
+                Undo round
+              </button>
+            )}
+          </div>
         )}
         {seg.seconds === null && !seg.counter && (
-          <button className="btn primary huge" onClick={() => act(done)}>
+          <button className="btn primary huge" onClick={() => allowTap() && act(done)}>
             {seg.gate ? `Start round ${seg.round}` : 'Done'}
           </button>
         )}
         {seg.role === 'rest' && seg.seconds !== null && (
           <div className="adjust">
-            <button className="btn" aria-label="Remove 15 seconds" onClick={() => act((r, n) => adjustSeconds(r, -15, n))}>
+            <button className="btn" aria-label="Remove 15 seconds" onClick={() => allowTap() && act((r, n) => adjustSeconds(r, -15, n))}>
               −15s
             </button>
-            <button className="btn" aria-label="Add 15 seconds" onClick={() => act((r, n) => adjustSeconds(r, 15, n))}>
+            <button className="btn" aria-label="Add 15 seconds" onClick={() => allowTap() && act((r, n) => adjustSeconds(r, 15, n))}>
               +15s
             </button>
           </div>
@@ -359,13 +398,13 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
       {next && <div className="run-next muted">Next: {nextText(next)}</div>}
 
       <footer className="run-controls">
-        <button className="btn" aria-label="Previous" onClick={() => act((r, n) => back(r, n))}>
+        <button className="btn" aria-label="Previous" onClick={() => allowTap() && act((r, n) => back(r, n))}>
           ⏮
         </button>
         <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
           {paused ? 'Resume' : 'Pause'}
         </button>
-        <button className="btn" aria-label="Skip" onClick={() => act(skip)}>
+        <button className="btn" aria-label="Skip" onClick={onSkip}>
           ⏭
         </button>
       </footer>

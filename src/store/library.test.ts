@@ -314,9 +314,17 @@ describe('export / import', () => {
     expect(st.getItem(LIBRARY_KEY)).toBe(before);
   });
 
+  it('mergeImport skips a workout you already have, even under a different id', () => {
+    const existing = seedWorkouts();
+    const same = { ...existing[0], id: 'other-id', steps: existing[0].steps.map((x) => ({ ...x, id: x.id + '-x' })) };
+    expect(mergeImport(existing, [same])).toEqual(existing);
+    const renamed = { ...same, name: 'Full Body A (new)' };
+    expect(mergeImport(existing, [renamed, { ...renamed, id: 'again' }])).toHaveLength(4); // and not twice within one import
+  });
+
   it('mergeImport keeps everything and re-ids colliding workouts', () => {
     const existing = seedWorkouts();
-    const incoming = [{ ...existing[0] }, { ...seedWorkouts()[1], id: 'brand-new' }];
+    const incoming = [{ ...existing[0], name: 'Same id, different content' }, { ...seedWorkouts()[1], id: 'brand-new', name: 'Brand new' }];
     const merged = mergeImport(existing, incoming);
     expect(merged).toHaveLength(5);
     expect(merged.slice(0, 3)).toEqual(existing);

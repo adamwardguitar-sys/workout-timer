@@ -156,7 +156,7 @@ export function Library({ navigate }: { navigate: Navigate }) {
       )}
 
       {savedRun && (
-        <button className="btn resume wide" onClick={() => navigate({ name: 'run', id: savedRun.workout.id })}>
+        <button className="btn resume wide" onClick={() => navigate({ name: 'run', id: savedRun.workout.id, resume: true })}>
           Resume workout · {savedRun.workout.name.trim() || 'Untitled'}
         </button>
       )}

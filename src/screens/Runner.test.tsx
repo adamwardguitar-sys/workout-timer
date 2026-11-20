@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { Mock } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { Runner } from './Runner';
@@ -56,6 +56,7 @@ function fakeSound(): Sound {
     setEnabled: vi.fn(),
     setVibrate: vi.fn(),
     running: vi.fn(() => true),
+    close: vi.fn(async () => {}),
   };
 }
 
@@ -185,12 +186,15 @@ describe('Runner tap and rest', () => {
     expect(cues(sound)).toContain('rest');
     expect(screen.getByText('Rest')).toBeInTheDocument();
     expect(clock()).toHaveTextContent('2:00');
+    tick(500);
     await user.click(screen.getByRole('button', { name: 'Add 15 seconds' }));
     expect(clock()).toHaveTextContent('2:15');
+    tick(500);
     await user.click(screen.getByRole('button', { name: 'Remove 15 seconds' }));
+    tick(500);
     await user.click(screen.getByRole('button', { name: 'Remove 15 seconds' }));
-    expect(clock()).toHaveTextContent('1:45');
-    tick(105_000);
+    expect(clock()).toHaveTextContent('1:44'); // 1:45 less the 1.5 s of waiting between taps
+    tick(104_000);
     expect(screen.getByText('Round 2')).toBeInTheDocument();
     expect(screen.getByText('5 Rows')).toBeInTheDocument();
   });
@@ -208,6 +212,7 @@ describe('Runner tap and rest', () => {
     await start();
     await user.click(screen.getByRole('button', { name: 'Skip' }));
     expect(screen.getByText('Rest')).toBeInTheDocument();
+    tick(500);
     await user.click(screen.getByRole('button', { name: 'Previous' }));
     expect(screen.getByText('Squats')).toBeInTheDocument();
   });
@@ -242,6 +247,7 @@ describe('Runner pause, finish and AMRAP', () => {
     const { user, start } = setup(amrap);
     await start();
     await user.click(screen.getByRole('button', { name: '+1 round' }));
+    tick(500);
     await user.click(screen.getByRole('button', { name: '+1 round' }));
     expect(screen.getByText('Rounds: 2')).toBeInTheDocument();
     tick(600_000);
@@ -257,7 +263,7 @@ describe('Runner resume and quit', () => {
     saveLibrary([interval]);
     const sound = fakeSound();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<Runner id="interval" navigate={vi.fn()} sound={sound} />);
+    render(<Runner id="interval" resume navigate={vi.fn()} sound={sound} />);
     expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
     expect(screen.getByText('Squats')).toBeInTheDocument();
     expect(clock()).toHaveTextContent('0:35');
@@ -406,6 +412,7 @@ describe('Runner history', () => {
     const { user, start } = setup(amrap);
     await start();
     await user.click(screen.getByRole('button', { name: '+1 round' }));
+    tick(500);
     await user.click(screen.getByRole('button', { name: '+1 round' }));
     tick(600_000);
     expect(loadHistory()[0]).toMatchObject({ laps: 2, completed: true, mode: 'amrap' });
@@ -489,5 +496,67 @@ describe('Runner waiting between rounds', () => {
     fireEvent.change(screen.getByLabelText('Rounds'), { target: { value: '1' } });
     expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
     expect(user).toBeDefined();
+  });
+});
+
+describe('Runner protection against stray taps', () => {
+  it('ignores a second tap on Done that comes right after the first', async () => {
+    const { user, start } = setup(flowStep);
+    await start();
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByText('B').closest('li')).toHaveAttribute('aria-current', 'step');
+    tick(500);
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByText('C').closest('li')).toHaveAttribute('aria-current', 'step');
+  });
+
+  it('ignores a quick second tap on +1 round, and Undo round takes one back', async () => {
+    const { user, start } = setup(amrap);
+    await start();
+    await user.click(screen.getByRole('button', { name: '+1 round' }));
+    await user.click(screen.getByRole('button', { name: '+1 round' }));
+    expect(screen.getByText('Rounds: 1')).toBeInTheDocument();
+    tick(500);
+    await user.click(screen.getByRole('button', { name: '+1 round' }));
+    expect(screen.getByText('Rounds: 2')).toBeInTheDocument();
+    tick(500);
+    await user.click(screen.getByRole('button', { name: 'Undo round' }));
+    expect(screen.getByText('Rounds: 1')).toBeInTheDocument();
+  });
+
+  it('asks before a Skip that would end the workout', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const { user, start } = setup(quick);
+    await start();
+    tick(500);
+    await user.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('heading', { name: 'Workout complete' })).not.toBeInTheDocument();
+    tick(500);
+    await user.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(screen.getByRole('heading', { name: 'Workout complete' })).toBeInTheDocument();
+  });
+});
+
+describe('Runner resume versus start over', () => {
+  it('opening a workout that has an older saved run starts fresh, and the old run only goes when you press Start', async () => {
+    saveLibrary([interval]);
+    saveActiveRun(startRun(interval, Date.now() - 5_000));
+    const sound = fakeSound();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<Runner id="interval" navigate={vi.fn()} sound={sound} />);
+    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
+    const oldStart = loadActiveRun()!.startedAt;
+    await user.click(screen.getByRole('button', { name: 'Start' }));
+    expect(loadActiveRun()!.startedAt).toBeGreaterThan(oldStart);
+    expect(screen.getByText('Get ready')).toBeInTheDocument();
+    expect(clock()).toHaveTextContent('0:10');
+  });
+
+  it('releases the audio when you leave the screen', () => {
+    const { sound } = setup(quick);
+    cleanup();
+    expect(sound.close).toHaveBeenCalled();
   });
 });
