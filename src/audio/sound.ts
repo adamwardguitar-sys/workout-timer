@@ -6,6 +6,8 @@ export interface Sound {
   setVolume(v: number): void;
   setEnabled(on: boolean): void;
   setVibrate(on: boolean): void;
+  /** False only when an audio context exists, sound is on, and the browser has suspended or interrupted it. */
+  running(): boolean;
 }
 
 interface Tone {
@@ -71,21 +73,38 @@ export function createSound(opts: { ctxFactory?: () => AudioContext } = {}): Sou
   return {
     async unlock() {
       try {
-        if (!ctx) {
+        // iOS: play through the ring/silent switch instead of being muted by it.
+        const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+        if (session) session.type = 'playback';
+      } catch {
+        /* not supported */
+      }
+      if (!ctx) {
+        try {
           ctx = factory();
           master = ctx.createGain();
           master.gain.value = volume;
           master.connect(ctx.destination);
+        } catch {
+          ctx = null;
+          master = null;
+          return;
         }
-        if (ctx.state !== 'running') await ctx.resume();
-      } catch {
-        ctx = null;
-        master = null;
+      }
+      if (ctx.state !== 'running') {
+        try {
+          await ctx.resume();
+        } catch {
+          /* outside a tap the browser may refuse; the next tap tries again */
+        }
       }
     },
     play(cue) {
       if (!enabled) return;
-      if (ctx && master) for (const t of TONES[cue]) playTone(ctx, master, t);
+      if (ctx && master) {
+        if (ctx.state !== 'running') void ctx.resume().catch(() => {});
+        for (const t of TONES[cue]) playTone(ctx, master, t);
+      }
       if (vibrate && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
         navigator.vibrate(VIBRATION[cue]);
       }
@@ -99,6 +118,9 @@ export function createSound(opts: { ctxFactory?: () => AudioContext } = {}): Sou
     },
     setVibrate(on) {
       vibrate = on;
+    },
+    running() {
+      return !enabled || !ctx || ctx.state === 'running';
     },
   };
 }

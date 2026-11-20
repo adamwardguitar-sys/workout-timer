@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
+import type { Mock } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { Runner } from './Runner';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -53,6 +54,7 @@ function fakeSound(): Sound {
     setVolume: vi.fn(),
     setEnabled: vi.fn(),
     setVibrate: vi.fn(),
+    running: vi.fn(() => true),
   };
 }
 
@@ -273,5 +275,50 @@ describe('Runner resume and quit', () => {
     await user.click(screen.getByRole('button', { name: 'Quit' }));
     expect(navigate).not.toHaveBeenCalled();
     expect(loadActiveRun()).not.toBeNull();
+  });
+
+  it('does not resume a saved run that finished while the app was closed', async () => {
+    saveLibrary([quick]);
+    saveActiveRun(startRun(quick, Date.now()));
+    vi.setSystemTime(Date.now() + 60_000);
+    render(<Runner id="quick" navigate={vi.fn()} sound={fakeSound()} />);
+    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Workout complete' })).not.toBeInTheDocument();
+    expect(loadActiveRun()).toBeNull();
+  });
+});
+
+describe('Runner audio recovery', () => {
+  it('every tap re-arms the audio', async () => {
+    const { sound, user, start } = setup(noPrep);
+    await start();
+    const before = (sound.unlock as Mock).mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Pause' }));
+    expect((sound.unlock as Mock).mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it('asks for a tap when the audio was interrupted, and a tap brings it back', async () => {
+    let up = true;
+    const { sound, user, start } = setup(noPrep);
+    (sound.running as Mock).mockImplementation(() => up);
+    (sound.unlock as Mock).mockImplementation(async () => {
+      up = true;
+    });
+    await start();
+    expect(screen.queryByRole('button', { name: 'Tap to resume' })).not.toBeInTheDocument();
+    up = false;
+    tick(500);
+    await user.click(screen.getByRole('button', { name: 'Tap to resume' }));
+    tick(300);
+    expect(screen.queryByRole('button', { name: 'Tap to resume' })).not.toBeInTheDocument();
+  });
+
+  it('does not nag about audio when sound is switched off', async () => {
+    saveSettings({ ...DEFAULT_SETTINGS, sound: false });
+    const { sound, start } = setup(noPrep);
+    (sound.running as Mock).mockReturnValue(false);
+    await start();
+    tick(500);
+    expect(screen.queryByRole('button', { name: 'Tap to resume' })).not.toBeInTheDocument();
   });
 });

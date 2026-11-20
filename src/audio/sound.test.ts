@@ -46,6 +46,7 @@ function setup() {
 
 afterEach(() => {
   delete (navigator as { vibrate?: unknown }).vibrate;
+  delete (navigator as { audioSession?: unknown }).audioSession;
 });
 
 describe('createSound', () => {
@@ -119,5 +120,43 @@ describe('createSound', () => {
     const { sound } = setup();
     await sound.unlock();
     expect(() => sound.play('rest')).not.toThrow();
+  });
+
+  it('asks the context to resume again if it was interrupted', async () => {
+    const { ctx, sound } = setup();
+    await sound.unlock();
+    ctx.state = 'interrupted';
+    ctx.resume.mockClear();
+    sound.play('beep');
+    expect(ctx.resume).toHaveBeenCalled();
+  });
+
+  it('running() is false only while a context exists and is not running', async () => {
+    const { ctx, sound } = setup();
+    expect(sound.running()).toBe(true); // nothing to resume before unlock
+    await sound.unlock();
+    expect(sound.running()).toBe(true);
+    ctx.state = 'interrupted';
+    expect(sound.running()).toBe(false);
+    sound.setEnabled(false);
+    expect(sound.running()).toBe(true); // sound off: nothing to recover
+  });
+
+  it('a rejected resume keeps the context so a later tap can recover', async () => {
+    const { ctx, sound } = setup();
+    ctx.resume.mockRejectedValueOnce(new Error('needs a gesture'));
+    await expect(sound.unlock()).resolves.toBeUndefined();
+    await sound.unlock();
+    sound.play('beep');
+    expect(ctx.oscillators).toHaveLength(1);
+  });
+
+  it('asks iOS to play through the ring/silent switch when it can', async () => {
+    const audioSession = { type: 'auto' };
+    Object.defineProperty(navigator, 'audioSession', { value: audioSession, configurable: true });
+    const { sound } = setup();
+    await sound.unlock();
+    expect(audioSession.type).toBe('playback');
+    delete (navigator as { audioSession?: unknown }).audioSession;
   });
 });

@@ -4,6 +4,18 @@ import { seedWorkouts } from './seed';
 import { memStorage, throwingStorage } from '../test/memStorage';
 
 const run = () => startRun(seedWorkouts()[0], 1_000);
+const quickRun = (now: number) =>
+  startRun(
+    {
+      ...seedWorkouts()[0],
+      prepSeconds: 0,
+      rounds: 1,
+      advance: 'step',
+      restBetweenRounds: 0,
+      steps: [{ id: 'go', label: 'Go', kind: 'timed', role: 'work', seconds: 5 }],
+    },
+    now,
+  );
 
 describe('activeRun store', () => {
   it('round trips a run', () => {
@@ -44,5 +56,21 @@ describe('activeRun store', () => {
     expect(loadActiveRun(throwingStorage())).toBeNull();
     expect(() => saveActiveRun(run(), throwingStorage())).not.toThrow();
     expect(() => clearActiveRun(throwingStorage())).not.toThrow();
+  });
+
+  it('drops, and removes, a run that would already have finished by now', () => {
+    const st = memStorage();
+    saveActiveRun(quickRun(0), st, 0);
+    expect(loadActiveRun(st, 60_000)).toBeNull();
+    expect(st.getItem(ACTIVE_RUN_KEY)).toBeNull();
+  });
+
+  it('keeps a run that is still going, and a paused run however long ago it paused', () => {
+    const st = memStorage();
+    saveActiveRun(quickRun(0), st, 0);
+    expect(loadActiveRun(st, 2_000)).not.toBeNull();
+    const paused = { ...quickRun(0), pausedAt: 1_000 };
+    saveActiveRun(paused, st, 1_000);
+    expect(loadActiveRun(st, 3_600_000)).not.toBeNull();
   });
 });

@@ -82,11 +82,15 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
       if (out.state !== cur) apply(out.state, out.events);
       else setFrame((n) => n + 1);
     };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void sound.unlock();
+      tick();
+    };
     const timer = setInterval(tick, 250);
-    document.addEventListener('visibilitychange', tick);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearInterval(timer);
-      document.removeEventListener('visibilitychange', tick);
+      document.removeEventListener('visibilitychange', onVisible);
     };
     // apply only uses refs and stable setters
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,6 +111,7 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   }
 
   const act = (fn: (r: RunState, now: number) => { state: RunState; events: RunEvent[] } | RunState) => {
+    void sound.unlock(); // every tap re-arms audio that iOS may have interrupted
     const cur = runRef.current;
     if (!cur) return;
     const out = fn(cur, Date.now());
@@ -200,7 +205,7 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
         <span className="run-spacer" />
       </header>
 
-      {needsTap && (
+      {(needsTap || (settings.sound && !sound.running())) && (
         <button
           className="btn primary huge resume-overlay"
           onClick={() => {

@@ -1,4 +1,4 @@
-import type { RunState } from '../engine/runner';
+import { update, type RunState } from '../engine/runner';
 import { isWorkout } from './library';
 
 export const ACTIVE_RUN_KEY = 'workout-timer:active-run';
@@ -66,7 +66,8 @@ export function loadActiveRun(
       typeof saved.savedAt !== 'number' ||
       now - saved.savedAt > MAX_AGE_MS ||
       !isRunState(saved.state) ||
-      saved.state.finished
+      saved.state.finished ||
+      (saved.state.pausedAt === null && update(saved.state, now).state.finished)
     ) {
       clearActiveRun(storage);
       return null;

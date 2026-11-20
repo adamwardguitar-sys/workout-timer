@@ -124,4 +124,13 @@ describe('Library', () => {
     setup();
     expect(screen.queryByRole('button', { name: /Resume workout/ })).not.toBeInTheDocument();
   });
+
+  it('does not offer to resume a run that finished while the app was closed', () => {
+    const w = { ...seedWorkouts()[1], prepSeconds: 0, rounds: 1, restBetweenRounds: 0, advance: 'step' as const,
+      steps: [{ id: 'g', label: 'Go', kind: 'timed' as const, role: 'work' as const, seconds: 5 }] };
+    saveLibrary([w]);
+    saveActiveRun(startRun(w, Date.now() - 60_000));
+    setup();
+    expect(screen.queryByRole('button', { name: /Resume workout/ })).not.toBeInTheDocument();
+  });
 });
