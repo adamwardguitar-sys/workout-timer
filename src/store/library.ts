@@ -2,7 +2,15 @@ import { newId } from '../model/id';
 import { validateWorkout } from '../model/segments';
 import type { Workout } from '../model/types';
 import { isSession, type Session } from './history';
-import { FULL_BODY_A, FULL_BODY_B, seedWorkouts } from './seed';
+import {
+  ATHENIAN_LABELS,
+  FULL_BODY_A,
+  FULL_BODY_B,
+  WEIGHTED_A,
+  WEIGHTED_ATHENIAN,
+  WEIGHTED_B,
+  seedWorkouts,
+} from './seed';
 
 export const LIBRARY_KEY = 'workout-timer:library:v1';
 export const CORRUPT_KEY = 'workout-timer:library:corrupt';
@@ -19,7 +27,8 @@ function isStep(x: unknown): boolean {
     (s.kind === 'timed' || s.kind === 'tap') &&
     (s.role === 'work' || s.role === 'rest') &&
     optNum(s.seconds) &&
-    optNum(s.reps)
+    optNum(s.reps) &&
+    (s.weighted === undefined || typeof s.weighted === 'boolean')
   );
 }
 
@@ -95,30 +104,69 @@ function migrateOldSeeds(ws: Workout[]): { workouts: Workout[]; changed: boolean
 
 export const MIGRATIONS_KEY = 'workout-timer:migrations:v1';
 
-/** The default get-ready went from 10s to 30s: move workouts still on the old default, once. */
-function applyPrep30(ws: Workout[], storage: Storage | undefined): { workouts: Workout[]; changed: boolean } {
-  let done: unknown = [];
+function readFlags(storage: Storage | undefined): string[] {
   try {
-    done = JSON.parse(storage?.getItem(MIGRATIONS_KEY) ?? '[]');
+    const parsed: unknown = JSON.parse(storage?.getItem(MIGRATIONS_KEY) ?? '[]');
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
   } catch {
-    done = [];
+    return [];
   }
-  const flags = Array.isArray(done) ? (done as string[]) : [];
-  if (flags.includes('prep-30')) return { workouts: ws, changed: false };
-  const workouts = ws.map((w) => (w.prepSeconds === 10 ? { ...w, prepSeconds: 30 } : w));
+}
+
+function writeFlags(flags: string[], storage: Storage | undefined): void {
   try {
-    storage?.setItem(MIGRATIONS_KEY, JSON.stringify([...flags, 'prep-30']));
+    storage?.setItem(MIGRATIONS_KEY, JSON.stringify(flags));
   } catch {
     /* ignore */
   }
+}
+
+const ALL_MIGRATIONS = ['prep-30', 'weights-1'];
+
+/** Runs `fix` over the library the first time only, so a later choice of yours is never undone. */
+function runOnce(
+  flag: string,
+  ws: Workout[],
+  storage: Storage | undefined,
+  fix: (ws: Workout[]) => Workout[],
+): { workouts: Workout[]; changed: boolean } {
+  const flags = readFlags(storage);
+  if (flags.includes(flag)) return { workouts: ws, changed: false };
+  const workouts = fix(ws);
+  writeFlags([...flags, flag], storage);
   return { workouts, changed: workouts.some((w, i) => w !== ws[i]) };
+}
+
+/** Fresh installs already have the current defaults: just record that nothing needs migrating. */
+function markAllMigrated(storage: Storage | undefined): void {
+  writeFlags([...new Set([...readFlags(storage), ...ALL_MIGRATIONS])], storage);
+}
+
+/** The default get-ready went from 10s to 30s: move workouts still on the old default. */
+const fixPrep30 = (ws: Workout[]): Workout[] => ws.map((w) => (w.prepSeconds === 10 ? { ...w, prepSeconds: 30 } : w));
+
+const SEED_WEIGHTS: Record<string, { labels: string[]; weighted: string[] }> = {
+  'Full Body A': { labels: FULL_BODY_A, weighted: WEIGHTED_A },
+  'Full Body B': { labels: FULL_BODY_B, weighted: WEIGHTED_B },
+  'Kettlebell Rounds (Athenian Complex)': { labels: ATHENIAN_LABELS, weighted: WEIGHTED_ATHENIAN },
+};
+
+/** Tick "Track weight" on the starter workouts' weighted exercises (only where you have not chosen). */
+function fixWeights(ws: Workout[]): Workout[] {
+  return ws.map((w) => {
+    const seed = SEED_WEIGHTS[w.name];
+    if (!seed || w.steps.length !== seed.labels.length || !w.steps.every((s, i) => s.label === seed.labels[i])) return w;
+    const steps = w.steps.map((s) => (s.weighted === undefined && seed.weighted.includes(s.label) ? { ...s, weighted: true } : s));
+    return steps.some((s, i) => s !== w.steps[i]) ? { ...w, steps } : w;
+  });
 }
 
 function upgrade(ws: Workout[], storage: Storage | undefined): Workout[] {
   const a = migrateOldSeeds(ws);
-  const b = applyPrep30(a.workouts, storage);
-  if (a.changed || b.changed) saveLibrary(b.workouts, storage);
-  return b.workouts;
+  const b = runOnce('prep-30', a.workouts, storage, fixPrep30);
+  const c = runOnce('weights-1', b.workouts, storage, fixWeights);
+  if (a.changed || b.changed || c.changed) saveLibrary(c.workouts, storage);
+  return c.workouts;
 }
 
 export interface CorruptEntry {
@@ -169,7 +217,7 @@ export function loadLibrary(storage: Storage | undefined = defaultStorage()): Wo
   if (raw === null) {
     const seeds = seedWorkouts();
     saveLibrary(seeds, storage);
-    applyPrep30(seeds, storage); // fresh installs are already on 30s; just record it
+    markAllMigrated(storage);
     return seeds;
   }
   try {
@@ -191,7 +239,7 @@ export function loadLibrary(storage: Storage | undefined = defaultStorage()): Wo
   addCorrupt(raw, storage);
   const seeds = seedWorkouts();
   saveLibrary(seeds, storage);
-  applyPrep30(seeds, storage);
+  markAllMigrated(storage);
   return seeds;
 }
 

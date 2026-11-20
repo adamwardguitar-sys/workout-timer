@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cueFor } from '../audio/cues';
 import { NumberField } from '../components/NumberField';
+import { WeightFields } from '../components/WeightFields';
 import { createSound, type Sound } from '../audio/sound';
 import {
   adjustSeconds,
@@ -25,7 +26,16 @@ import { segmentsForRound, validateWorkout } from '../model/segments';
 import type { Segment } from '../model/types';
 import type { Navigate } from '../route';
 import { clearActiveRun, loadActiveRun, saveActiveRun } from '../store/activeRun';
-import { MIN_LOGGED_SECONDS, addSession, sessionFromRun, setNote } from '../store/history';
+import {
+  MIN_LOGGED_SECONDS,
+  addSession,
+  loadHistory,
+  sessionFromRun,
+  setNote,
+  setWeights,
+  trackedExercises,
+} from '../store/history';
+import { lastWeights } from '../store/stats';
 import { loadSettings } from '../store/settings';
 
 function nextSegment(run: RunState): Segment | undefined {
@@ -78,6 +88,7 @@ export function Runner({
   const [, setFrame] = useState(0);
   const [startError, setStartError] = useState<string | null>(null);
   const [note, setNoteText] = useState('');
+  const [weightValues, setWeightValues] = useState<Record<string, number | undefined>>({});
   // rounds picked on the start screen for this run only ('saved' = use the workout's own setting)
   const [roundsChoice, setRoundsChoice] = useState<number | null | 'saved'>('saved');
   const [waitChoice, setWaitChoice] = useState<boolean | 'saved'>('saved');
@@ -90,13 +101,35 @@ export function Runner({
     sound.setVibrate(settings.vibrate);
   }, [sound, settings]);
 
+  /** Start the weights from what you lifted last time (same unit), and save that with the session. */
+  function startWeights(finished: RunState, sessionId: string) {
+    const tracked = trackedExercises(finished.workout);
+    if (tracked.length === 0) return;
+    const last = lastWeights(loadHistory());
+    const values: Record<string, number | undefined> = {};
+    for (const ex of tracked) {
+      const w = last.get(ex.toLowerCase());
+      if (w && w.unit === settings.weightUnit) values[ex] = w.value;
+    }
+    setWeightValues(values);
+    setWeights(
+      sessionId,
+      tracked.filter((ex) => values[ex] !== undefined).map((ex) => ({ exercise: ex, value: values[ex]! })),
+      settings.weightUnit,
+    );
+  }
+
   function apply(next: RunState, events: RunEvent[] = []) {
     const wasFinished = runRef.current?.finished ?? false;
     runRef.current = next;
     setRun(next);
     if (next.finished) {
       clearActiveRun();
-      if (!wasFinished) addSession(sessionFromRun(next, Date.now()));
+      if (!wasFinished) {
+        const session = sessionFromRun(next, Date.now());
+        addSession(session);
+        startWeights(next, session.id);
+      }
     } else {
       saveActiveRun(next);
     }
@@ -254,6 +287,15 @@ export function Runner({
   if (run.finished) {
     const sum = summarize(run, Date.now());
     const sessionId = `${run.workout.id}-${run.startedAt}`;
+    const tracked = trackedExercises(run.workout);
+    const saveWeights = (values: Record<string, number | undefined>) => {
+      setWeightValues(values);
+      setWeights(
+        sessionId,
+        tracked.filter((ex) => values[ex] !== undefined).map((ex) => ({ exercise: ex, value: values[ex]! })),
+        settings.weightUnit,
+      );
+    };
     return (
       <section className="screen run-done">
         <h1>Workout complete</h1>
@@ -279,6 +321,18 @@ export function Runner({
             )}
           </div>
           <p className="muted">Saved to history ✓</p>
+          {tracked.length > 0 && (
+            <div className="weights">
+              <h2>Weights</h2>
+              <WeightFields
+                exercises={tracked}
+                values={weightValues}
+                unit={settings.weightUnit}
+                onChange={(ex, v) => saveWeights({ ...weightValues, [ex]: v })}
+                onFillAll={(v) => saveWeights(Object.fromEntries(tracked.map((ex) => [ex, v])))}
+              />
+            </div>
+          )}
           <textarea
             className="note"
             aria-label="Note"

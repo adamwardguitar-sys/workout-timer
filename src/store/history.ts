@@ -1,5 +1,12 @@
 import { summarize, type RunState } from '../engine/runner';
-import type { Mode } from '../model/types';
+import type { Mode, Workout } from '../model/types';
+
+export type WeightUnit = 'kg' | 'lb';
+
+export interface ExerciseWeight {
+  exercise: string;
+  value: number;
+}
 
 /** One logged workout. Times are ms since the epoch; durations are active seconds. */
 export interface Session {
@@ -14,6 +21,10 @@ export interface Session {
   /** True only if the workout ran to its end; false means you stopped it early. */
   completed: boolean;
   note?: string;
+  /** Exercises that could be weighed in this workout (those with Track weight ticked). */
+  tracked?: string[];
+  weights?: ExerciseWeight[];
+  unit?: WeightUnit;
 }
 
 /** Ending a workout sooner than this is treated as an accidental start and not logged. */
@@ -38,7 +49,18 @@ export function isSession(x: unknown): x is Session {
     typeof s.roundsDone === 'number' &&
     typeof s.laps === 'number' &&
     typeof s.completed === 'boolean' &&
-    (s.note === undefined || typeof s.note === 'string')
+    (s.note === undefined || typeof s.note === 'string') &&
+    (s.tracked === undefined || (Array.isArray(s.tracked) && s.tracked.every((t) => typeof t === 'string'))) &&
+    (s.unit === undefined || s.unit === 'kg' || s.unit === 'lb') &&
+    (s.weights === undefined ||
+      (Array.isArray(s.weights) &&
+        s.weights.every(
+          (w) =>
+            typeof w === 'object' &&
+            w !== null &&
+            typeof (w as ExerciseWeight).exercise === 'string' &&
+            typeof (w as ExerciseWeight).value === 'number',
+        )))
   );
 }
 
@@ -124,15 +146,51 @@ export function setNote(id: string, note: string, storage: Storage | undefined =
   return next;
 }
 
+/** Stores the weights for a session. Blank, zero and nameless entries are dropped; none left clears them. */
+export function setWeights(
+  id: string,
+  weights: ExerciseWeight[],
+  unit: WeightUnit,
+  storage: Storage | undefined = defaultStorage(),
+): Session[] {
+  const clean = weights
+    .filter((w) => w.exercise.trim() && Number.isFinite(w.value) && w.value > 0)
+    .map((w) => ({ exercise: w.exercise, value: w.value }));
+  const next = loadHistory(storage).map((s) => {
+    if (s.id !== id) return s;
+    const { weights: _w, unit: _u, ...rest } = s;
+    void _w;
+    void _u;
+    return clean.length > 0 ? { ...rest, weights: clean, unit } : rest;
+  });
+  saveHistory(next, storage);
+  return next;
+}
+
 export function removeSession(id: string, storage: Storage | undefined = defaultStorage()): Session[] {
   const next = loadHistory(storage).filter((s) => s.id !== id);
   saveHistory(next, storage);
   return next;
 }
 
+/** The exercises to ask a weight for: weighted work steps, each name once, in order. */
+export function trackedExercises(workout: Workout): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const st of workout.steps) {
+    const name = st.label.trim();
+    if (st.weighted && st.role === 'work' && name && !seen.has(name.toLowerCase())) {
+      seen.add(name.toLowerCase());
+      out.push(name);
+    }
+  }
+  return out;
+}
+
 /** The session for a run. The id is stable per run, so logging the same run twice is harmless. */
 export function sessionFromRun(run: RunState, now: number, completed: boolean = run.finished): Session {
   const sum = summarize(run, now);
+  const tracked = trackedExercises(run.workout);
   return {
     id: `${run.workout.id}-${run.startedAt}`,
     workoutId: run.workout.id,
@@ -143,5 +201,6 @@ export function sessionFromRun(run: RunState, now: number, completed: boolean = 
     roundsDone: sum.roundsDone,
     laps: sum.laps,
     completed,
+    ...(tracked.length > 0 ? { tracked } : {}),
   };
 }

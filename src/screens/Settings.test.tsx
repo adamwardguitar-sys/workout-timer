@@ -38,13 +38,22 @@ describe('Settings controls', () => {
     await user.click(screen.getByLabelText('Keep screen awake'));
     fireEvent.change(screen.getByLabelText('Volume'), { target: { value: '0.4' } });
     await user.selectOptions(screen.getByLabelText('Countdown beeps'), '5');
-    expect(loadSettings()).toEqual({ sound: false, vibrate: false, keepAwake: false, volume: 0.4, beepSeconds: 5 });
+    expect(loadSettings()).toEqual({ sound: false, vibrate: false, keepAwake: false, volume: 0.4, beepSeconds: 5, weightUnit: 'kg' });
   });
 
   it('Back returns to the library', async () => {
     const { navigate, user } = setup();
     await user.click(screen.getByRole('button', { name: 'Back to library' }));
     expect(navigate).toHaveBeenCalledWith({ name: 'library' });
+  });
+});
+
+describe('Settings weight unit', () => {
+  it('defaults to kg and can be switched to lb', async () => {
+    const { user } = setup();
+    expect(screen.getByLabelText('Weight unit')).toHaveValue('kg');
+    await user.selectOptions(screen.getByLabelText('Weight unit'), 'lb');
+    expect(loadSettings().weightUnit).toBe('lb');
   });
 });
 

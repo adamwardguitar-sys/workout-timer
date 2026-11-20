@@ -9,12 +9,13 @@ describe('settings', () => {
       beepSeconds: 3,
       keepAwake: true,
       vibrate: true,
+      weightUnit: 'kg',
     });
   });
 
   it('round trips', () => {
     const st = memStorage();
-    const s = { sound: false, volume: 0.4, beepSeconds: 5, keepAwake: false, vibrate: false };
+    const s = { sound: false, volume: 0.4, beepSeconds: 5, keepAwake: false, vibrate: false, weightUnit: 'lb' as const };
     saveSettings(s, st);
     expect(loadSettings(st)).toEqual(s);
   });
@@ -40,5 +41,10 @@ describe('settings', () => {
   it('does not throw when storage is unavailable', () => {
     expect(loadSettings(throwingStorage())).toEqual(DEFAULT_SETTINGS);
     expect(() => saveSettings(DEFAULT_SETTINGS, throwingStorage())).not.toThrow();
+  });
+
+  it('only accepts kg or lb for the weight unit', () => {
+    expect(loadSettings(memStorage({ [SETTINGS_KEY]: JSON.stringify({ weightUnit: 'lb' }) })).weightUnit).toBe('lb');
+    expect(loadSettings(memStorage({ [SETTINGS_KEY]: JSON.stringify({ weightUnit: 'stone' }) })).weightUnit).toBe('kg');
   });
 });

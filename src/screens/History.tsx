@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { WeightFields } from '../components/WeightFields';
 import { useHistory } from '../hooks/useHistory';
 import { dateLabel, formatDuration, relativeDay } from '../model/format';
-import type { Session } from '../store/history';
-import { activityGrid, groupByDay, streakDays, thisWeek } from '../store/stats';
+import type { ExerciseWeight, Session, WeightUnit } from '../store/history';
+import { loadSettings } from '../store/settings';
+import { activityGrid, exerciseProgress, groupByDay, thisWeek } from '../store/stats';
 
 const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -17,9 +19,31 @@ function detail(s: Session): string {
   return parts.join(' · ');
 }
 
-function SessionCard({ s, onNote, onDelete }: { s: Session; onNote: (text: string) => void; onDelete: () => void }) {
+const toRecord = (list: ExerciseWeight[] | undefined): Record<string, number | undefined> =>
+  Object.fromEntries((list ?? []).map((w) => [w.exercise, w.value]));
+
+interface CardProps {
+  s: Session;
+  defaultUnit: WeightUnit;
+  onNote: (text: string) => void;
+  onWeights: (list: ExerciseWeight[], unit: WeightUnit) => void;
+  onDelete: () => void;
+}
+
+function SessionCard({ s, defaultUnit, onNote, onWeights, onDelete }: CardProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(s.note ?? '');
+  const [editingWeights, setEditingWeights] = useState(false);
+  const unit: WeightUnit = s.weights?.length ? (s.unit ?? 'kg') : defaultUnit;
+  const [wDraft, setWDraft] = useState<Record<string, number | undefined>>(() => toRecord(s.weights));
+  const canWeigh = (s.tracked?.length ?? 0) > 0;
+
+  function saveWeights() {
+    const list = (s.tracked ?? []).filter((ex) => wDraft[ex] !== undefined).map((ex) => ({ exercise: ex, value: wDraft[ex]! }));
+    onWeights(list, unit);
+    setEditingWeights(false);
+  }
+
   return (
     <article className="session">
       <div className="session-head">
@@ -27,6 +51,36 @@ function SessionCard({ s, onNote, onDelete }: { s: Session; onNote: (text: strin
         {!s.completed && <span className="badge early">Ended early</span>}
       </div>
       <div className="muted">{detail(s)}</div>
+
+      {s.weights && s.weights.length > 0 && !editingWeights && (
+        <p className="session-weights">{s.weights.map((w) => `${w.exercise} ${w.value} ${s.unit ?? 'kg'}`).join(' · ')}</p>
+      )}
+      {editingWeights && (
+        <div className="note-edit">
+          <WeightFields
+            exercises={s.tracked ?? []}
+            values={wDraft}
+            unit={unit}
+            onChange={(ex, v) => setWDraft({ ...wDraft, [ex]: v })}
+            onFillAll={(v) => setWDraft(Object.fromEntries((s.tracked ?? []).map((ex) => [ex, v])))}
+          />
+          <div className="notice-actions">
+            <button className="btn primary" onClick={saveWeights}>
+              Save
+            </button>
+            <button
+              className="btn ghost"
+              onClick={() => {
+                setWDraft(toRecord(s.weights));
+                setEditingWeights(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {editing ? (
         <div className="note-edit">
           <textarea className="note" aria-label="Note" rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} />
@@ -54,14 +108,21 @@ function SessionCard({ s, onNote, onDelete }: { s: Session; onNote: (text: strin
       ) : (
         <>
           {s.note && <p className="session-note">{s.note}</p>}
-          <div className="session-actions">
-            <button className="btn ghost small" onClick={() => setEditing(true)}>
-              {s.note ? 'Edit note' : 'Add note'}
-            </button>
-            <button className="btn ghost small danger" onClick={onDelete}>
-              Delete session
-            </button>
-          </div>
+          {!editingWeights && (
+            <div className="session-actions">
+              {canWeigh && (
+                <button className="btn ghost small" onClick={() => setEditingWeights(true)}>
+                  {s.weights?.length ? 'Edit weights' : 'Add weights'}
+                </button>
+              )}
+              <button className="btn ghost small" onClick={() => setEditing(true)}>
+                {s.note ? 'Edit note' : 'Add note'}
+              </button>
+              <button className="btn ghost small danger" onClick={onDelete}>
+                Delete session
+              </button>
+            </div>
+          )}
         </>
       )}
     </article>
@@ -70,10 +131,14 @@ function SessionCard({ s, onNote, onDelete }: { s: Session; onNote: (text: strin
 
 export function History({ now = Date.now() }: { now?: number }) {
   const h = useHistory();
+  const defaultUnit = loadSettings().weightUnit;
+  const [day, setDay] = useState<string | null>(null);
+
   const week = thisWeek(h.sessions, now);
-  const streak = streakDays(h.sessions, now);
   const grid = activityGrid(h.sessions, now, 4);
-  const groups = groupByDay(h.sessions);
+  const month = grid.reduce((n, c) => n + c.count, 0);
+  const groups = groupByDay(h.sessions).filter((g) => day === null || g.date === day);
+  const progress = exerciseProgress(h.sessions);
 
   function remove(s: Session) {
     if (window.confirm(`Delete this ${s.workoutName} session from your history?`)) h.remove(s.id);
@@ -91,9 +156,10 @@ export function History({ now = Date.now() }: { now?: number }) {
           <div className="tile-label">This week</div>
           <div className="tile-sub">{formatDuration(week.seconds)}</div>
         </div>
-        <div className="tile" data-testid="tile-streak">
-          <div className="tile-value">{streak}</div>
-          <div className="tile-label">Day streak</div>
+        <div className="tile" data-testid="tile-month">
+          <div className="tile-value">{month}</div>
+          <div className="tile-label">Last 4 weeks</div>
+          <div className="tile-sub">{(month / 4).toFixed(1)} per week</div>
         </div>
         <div className="tile" data-testid="tile-total">
           <div className="tile-value">{h.sessions.length}</div>
@@ -109,17 +175,45 @@ export function History({ now = Date.now() }: { now?: number }) {
       </div>
       <div className="grid" aria-label="Last 4 weeks">
         {grid.map((c) => (
-          <div
+          <button
             key={c.date}
-            role="img"
-            className={`cell${c.future ? ' future' : ''}`}
+            className={`cell${c.future ? ' future' : ''}${day === c.date ? ' selected' : ''}`}
             data-level={level(c.seconds)}
+            disabled={c.future || c.count === 0}
+            aria-pressed={day === c.date}
+            onClick={() => setDay(day === c.date ? null : c.date)}
             aria-label={`${dateLabel(c.date)}: ${
               c.future ? 'upcoming' : c.count === 0 ? 'no sessions' : `${plural(c.count, 'session')}, ${formatDuration(c.seconds)}`
             }`}
           />
         ))}
       </div>
+      {day !== null && (
+        <button className="btn ghost small" onClick={() => setDay(null)}>
+          Show all
+        </button>
+      )}
+
+      {progress.length > 0 && (
+        <section aria-label="Exercise weights" className="progress">
+          <h2>Exercise weights</h2>
+          <ul className="progress-list">
+            {progress.map((p) => (
+              <li key={p.exercise}>
+                <strong>{p.exercise}</strong>
+                <span className="progress-value">
+                  {p.latest.value} {p.latest.unit}
+                </span>
+                <span className="muted">
+                  {p.previous
+                    ? `${p.latest.value > p.previous.value ? 'up' : 'down'} from ${p.previous.value} ${p.previous.unit} · ${relativeDay(p.latest.at, now).toLowerCase()}`
+                    : `first logged ${relativeDay(p.latest.at, now).toLowerCase()}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {h.sessions.length === 0 ? (
         <p className="empty">No sessions yet. Finish a workout and it will show up here.</p>
@@ -130,7 +224,14 @@ export function History({ now = Date.now() }: { now?: number }) {
               {relativeDay(g.sessions[0].startedAt, now)} · {dateLabel(g.date)}
             </h2>
             {g.sessions.map((s) => (
-              <SessionCard key={s.id} s={s} onNote={(t) => h.note(s.id, t)} onDelete={() => remove(s)} />
+              <SessionCard
+                key={s.id}
+                s={s}
+                defaultUnit={defaultUnit}
+                onNote={(t) => h.note(s.id, t)}
+                onWeights={(list, unit) => h.weights(s.id, list, unit)}
+                onDelete={() => remove(s)}
+              />
             ))}
           </div>
         ))

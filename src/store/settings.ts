@@ -1,9 +1,12 @@
+import type { WeightUnit } from './history';
+
 export interface Settings {
   sound: boolean;
   volume: number;
   beepSeconds: number;
   keepAwake: boolean;
   vibrate: boolean;
+  weightUnit: WeightUnit;
 }
 
 export const SETTINGS_KEY = 'workout-timer:settings:v1';
@@ -14,6 +17,7 @@ export const DEFAULT_SETTINGS: Settings = {
   beepSeconds: 3,
   keepAwake: true,
   vibrate: true,
+  weightUnit: 'kg',
 };
 
 function defaultStorage(): Storage | undefined {
@@ -39,6 +43,7 @@ export function loadSettings(storage: Storage | undefined = defaultStorage()): S
       beepSeconds: Math.round(num(p.beepSeconds, DEFAULT_SETTINGS.beepSeconds, 1, 5)),
       keepAwake: bool(p.keepAwake, DEFAULT_SETTINGS.keepAwake),
       vibrate: bool(p.vibrate, DEFAULT_SETTINGS.vibrate),
+      weightUnit: p.weightUnit === 'lb' ? 'lb' : 'kg',
     };
   } catch {
     return { ...DEFAULT_SETTINGS };

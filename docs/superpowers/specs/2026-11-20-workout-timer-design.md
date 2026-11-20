@@ -29,16 +29,22 @@ They currently use the *Interval Timer* app and want to build on it. What it get
 Owner asked for a professional, simple timer *and tracker*, leaving the product decisions to the builder.
 
 - **Sessions are logged automatically** (workout, start time, active seconds excluding pauses, rounds done, AMRAP laps, completed or ended early, optional note). Ending a workout before 30 seconds is treated as an accidental start and not logged. A run that finishes while the app is closed is logged when the app next opens.
-- **History tab:** this-week sessions and time, day streak (grace for "not yet today"), a 4-week Monday-first activity grid, and the session list grouped by day with notes and delete.
+- **History tab (a record, not a scoreboard; no streaks):** this-week sessions and time, last-4-weeks total with a weekly average, a 4-week Monday-first activity grid (tap a day to filter), exercise weights over time, and the session list grouped by day with notes, weights and delete.
 - **Finish summary** with time, rounds and a note; **workout cards** show last done and session count.
 - **Navigation:** bottom tab bar (Workouts, History, Settings) on the main screens; hidden while editing or running.
 - **Backups** (version 2) include history; version 1 backups still import.
 - **Wait for a tap between rounds:** opt-in per workout or per run, off by default; adds a tap-to-continue gate at the start of each round after the first.
 
+## Revision 3 (2026-11-20): weights, field polish, deferred issues
+
+- **Weight tracking:** each work step has a *Track weight* checkbox (unticked = N/A); starter workouts come with the right exercises ticked. The finish screen asks only for those exercises, prefilled from the last logged weight in the same unit, and saves as you type; past sessions can be edited. Unit (kg/lb) is a setting.
+- **Interval and number-field polish:** step rows are aligned, selects have a proper chevron, number boxes can be cleared while typing.
+- **Deferred issues closed:** resume only via the Resume banner (opening a workout starts fresh); double taps ignored and skipping the last step asks first; AMRAP Undo round; other-tab edits never overwritten and picked up live; long gaps no longer end an until-I-stop workout; no beep on a segment's first second; re-importing a backup adds nothing; the audio context is released when leaving the runner; the app reloads itself when a new version is published.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.
-- Charts beyond the activity grid; per-exercise weight and rep logging (possible later).
+- Charts beyond the activity grid and exercise-weight list; rep logging.
 - Spoken exercise names (a possible later addition).
 - Reliable audio with the screen locked or while another app is in the foreground (see Constraints).
 

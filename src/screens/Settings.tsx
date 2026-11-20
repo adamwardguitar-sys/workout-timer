@@ -101,6 +101,19 @@ export function Settings({ navigate }: { navigate: Navigate }) {
         Vibration <span className="muted">(not available on iPhone)</span>
       </label>
 
+      <h2>Units</h2>
+      <label className="field">
+        <span className="field-label">Weight unit</span>
+        <select
+          aria-label="Weight unit"
+          value={settings.weightUnit}
+          onChange={(e) => change({ weightUnit: e.target.value === 'lb' ? 'lb' : 'kg' })}
+        >
+          <option value="kg">Kilograms (kg)</option>
+          <option value="lb">Pounds (lb)</option>
+        </select>
+      </label>
+
       <h2>Screen</h2>
       <label className="check">
         <input

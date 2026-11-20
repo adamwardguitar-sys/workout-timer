@@ -9,7 +9,7 @@ import {
   parseImport,
   saveLibrary,
 } from './library';
-import { FULL_BODY_A, FULL_BODY_B, seedWorkouts } from './seed';
+import { FULL_BODY_A, FULL_BODY_B, WEIGHTED_A, WEIGHTED_ATHENIAN, WEIGHTED_B, seedWorkouts } from './seed';
 import type { Workout } from '../model/types';
 import type { Session } from './history';
 import { validateWorkout } from '../model/segments';
@@ -119,7 +119,7 @@ describe('moving untouched old Full Body seeds to 40s/20s', () => {
     const edited = { ...oldFlowSeed('Full Body A', FULL_BODY_A, 'idA'), restBetweenRounds: 90 };
     const renamedStep = oldFlowSeed('Full Body B', FULL_BODY_B, 'idB');
     renamedStep.steps[0].label = 'My own first move';
-    const st = memStorage({ [MIGRATIONS_KEY]: '["prep-30"]' });
+    const st = memStorage({ [MIGRATIONS_KEY]: '["prep-30","weights-1"]' });
     saveLibrary([edited, renamedStep], st);
     const ws = loadLibrary(st);
     expect(ws[0]).toEqual(edited);
@@ -128,7 +128,7 @@ describe('moving untouched old Full Body seeds to 40s/20s', () => {
 
   it('does not touch a workout of the same name that is not a flow', () => {
     const mine = { ...oldFlowSeed('Full Body A', FULL_BODY_A, 'idA'), mode: 'custom' as const };
-    const st = memStorage({ [MIGRATIONS_KEY]: '["prep-30"]' });
+    const st = memStorage({ [MIGRATIONS_KEY]: '["prep-30","weights-1"]' });
     saveLibrary([mine], st);
     expect(loadLibrary(st)[0]).toEqual(mine);
   });
@@ -152,6 +152,45 @@ describe('30 second get-ready default', () => {
     expect(loadLibrary(st).map((w) => w.prepSeconds)).toEqual([30, 30, 30]);
     saveLibrary(loadLibrary(st).map((w) => withPrep(w, 10)), st);
     expect(loadLibrary(st).map((w) => w.prepSeconds)).toEqual([10, 10, 10]);
+  });
+});
+
+describe('weight tracking on the starter workouts', () => {
+  const flagged = (w: Workout) => w.steps.filter((x) => x.weighted).map((x) => x.label);
+
+  it('marks the exercises that use a weight', () => {
+    const [a, b, c] = seedWorkouts();
+    expect(flagged(a)).toEqual(WEIGHTED_A);
+    expect(flagged(b)).toEqual(WEIGHTED_B);
+    expect(flagged(c)).toEqual(WEIGHTED_ATHENIAN);
+    expect(WEIGHTED_A).toContain('Goblet Squat');
+    expect(WEIGHTED_A).not.toContain('Chin Ups');
+    expect(WEIGHTED_ATHENIAN).not.toContain('Press Ups');
+  });
+
+  const stripFlags = (w: Workout): Workout => ({ ...w, steps: w.steps.map(({ weighted: _w, ...rest }) => (void _w, rest)) });
+
+  it('adds them once to untouched starter workouts you already have, and respects a later change', () => {
+    const st = memStorage({ [MIGRATIONS_KEY]: '["prep-30"]' });
+    const seeds = seedWorkouts().map(stripFlags);
+    const mine = { ...stripFlags(seedWorkouts()[0]), id: 'mine', name: 'My own workout' };
+    saveLibrary([...seeds, mine], st);
+    const ws = loadLibrary(st);
+    expect(flagged(ws[0])).toEqual(WEIGHTED_A);
+    expect(flagged(ws[2])).toEqual(WEIGHTED_ATHENIAN);
+    expect(flagged(ws[3])).toEqual([]); // other workouts are left alone
+    // you untick one: it must stay unticked
+    const edited = ws.map((w, i) => (i === 0 ? { ...w, steps: w.steps.map((x) => (x.label === 'Goblet Squat' ? { ...x, weighted: false } : x)) } : w));
+    saveLibrary(edited, st);
+    expect(flagged(loadLibrary(st)[0])).not.toContain('Goblet Squat');
+  });
+
+  it('a non-boolean weighted flag makes the workout unreadable', () => {
+    const bad = seedWorkouts()[0];
+    (bad.steps[0] as unknown as Record<string, unknown>).weighted = 'yes';
+    const st = memStorage({ [LIBRARY_KEY]: JSON.stringify([bad]) });
+    expect(loadLibrary(st)).toHaveLength(3);
+    expect(listCorrupt(st)).toHaveLength(1);
   });
 });
 

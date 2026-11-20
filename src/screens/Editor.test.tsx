@@ -168,6 +168,29 @@ describe('Editor validation and leaving', () => {
   });
 });
 
+describe('Editor track weight', () => {
+  it('each work exercise has a Track weight checkbox (unticked means N/A)', async () => {
+    const { user, saved } = setup(templateFor('custom'));
+    const box = screen.getByLabelText('Step 1 track weight');
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    expect(saved().steps[0].weighted).toBe(true);
+    await user.click(screen.getByLabelText('Step 1 track weight'));
+    expect(saved().steps[0].weighted).toBe(false);
+  });
+
+  it('is not offered on rest steps', () => {
+    setup(templateFor('custom')); // step 2 is a rest step
+    expect(screen.queryByLabelText('Step 2 track weight')).not.toBeInTheDocument();
+  });
+
+  it('starter workouts come with the right exercises ticked', () => {
+    setup(seedWorkouts()[0]);
+    expect(screen.getByLabelText('Step 4 track weight')).not.toBeChecked(); // Chin Ups
+    expect(screen.getByLabelText('Step 8 track weight')).toBeChecked(); // Goblet Squat
+  });
+});
+
 describe('Editor number fields', () => {
   it('lets you clear a time field and type a new one', async () => {
     const { user, saved } = setup(templateFor('custom'));

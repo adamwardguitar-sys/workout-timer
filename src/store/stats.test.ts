@@ -1,4 +1,4 @@
-import { activityGrid, groupByDay, streakDays, thisWeek, workoutStats } from './stats';
+import { activityGrid, exerciseProgress, groupByDay, lastWeights, thisWeek, workoutStats } from './stats';
 import type { Session } from './history';
 
 // Local-time dates so the tests do not depend on the machine's timezone.
@@ -24,20 +24,6 @@ describe('thisWeek', () => {
   });
   it('is zero with no sessions', () => {
     expect(thisWeek([], NOW)).toEqual({ sessions: 0, seconds: 0 });
-  });
-});
-
-describe('streakDays', () => {
-  it('counts consecutive days ending today, once per day', () => {
-    const list = [sess('a', at(11, 20)), sess('a2', at(11, 20, 18)), sess('b', at(11, 19)), sess('c', at(11, 18)), sess('d', at(11, 16))];
-    expect(streakDays(list, NOW)).toBe(3);
-  });
-  it('still counts a streak that ran up to yesterday', () => {
-    expect(streakDays([sess('b', at(11, 19)), sess('c', at(11, 18))], NOW)).toBe(2);
-  });
-  it('is 0 when the last session was two or more days ago', () => {
-    expect(streakDays([sess('d', at(11, 17))], NOW)).toBe(0);
-    expect(streakDays([], NOW)).toBe(0);
   });
 });
 
@@ -70,5 +56,39 @@ describe('groupByDay', () => {
     const groups = groupByDay(list);
     expect(groups.map((g) => g.date)).toEqual(['2026-11-20', '2026-11-18']);
     expect(groups[0].sessions.map((s) => s.id)).toEqual(['c', 'b']);
+  });
+});
+
+describe('weights', () => {
+  const w = (id: string, startedAt: number, weights: { exercise: string; value: number }[], unit: 'kg' | 'lb' = 'kg'): Session => ({
+    ...sess(id, startedAt),
+    weights,
+    unit,
+  });
+  const list = [
+    w('a', at(11, 2), [{ exercise: 'Goblet Squat', value: 12 }, { exercise: 'Flat Bench', value: 20 }]),
+    w('b', at(11, 9), [{ exercise: 'goblet squat', value: 16 }]),
+    w('c', at(11, 16), [{ exercise: 'Goblet Squat', value: 16 }, { exercise: 'Flat Bench', value: 20 }]),
+    sess('no-weights', at(11, 18)),
+  ];
+
+  it('lastWeights gives the most recent weight per exercise, ignoring case', () => {
+    const m = lastWeights(list);
+    expect(m.get('goblet squat')).toMatchObject({ value: 16, unit: 'kg', at: at(11, 16) });
+    expect(m.get('flat bench')).toMatchObject({ value: 20 });
+    expect(m.get('chin ups')).toBeUndefined();
+  });
+
+  it('exerciseProgress shows the latest weight and the last different one, most recent exercise first', () => {
+    const p = exerciseProgress(list);
+    expect(p.map((x) => x.exercise)).toEqual(['Goblet Squat', 'Flat Bench']);
+    expect(p[0].latest).toMatchObject({ value: 16, at: at(11, 16) });
+    expect(p[0].previous).toMatchObject({ value: 12, at: at(11, 2) });
+    expect(p[1].previous).toBeUndefined(); // 20 both times
+  });
+
+  it('does not compare weights across different units', () => {
+    const mixed = [w('a', at(11, 2), [{ exercise: 'Row', value: 40 }], 'lb'), w('b', at(11, 9), [{ exercise: 'Row', value: 20 }], 'kg')];
+    expect(exerciseProgress(mixed)[0].previous).toBeUndefined();
   });
 });

@@ -12,7 +12,6 @@ interface Props {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
-  step?: number;
   inputMode?: 'numeric' | 'decimal';
   /** Allow decimals (e.g. weights). */
   decimal?: boolean;
@@ -31,6 +30,7 @@ export function NumberField(props: Props) {
     <input
       type="number"
       inputMode={decimal ? 'decimal' : 'numeric'}
+      step={decimal ? 'any' : undefined}
       {...rest}
       value={shown}
       onFocus={(e) => e.currentTarget.select()}

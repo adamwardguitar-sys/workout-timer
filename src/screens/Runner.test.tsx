@@ -9,7 +9,7 @@ import type { Step, Workout } from '../model/types';
 import type { Sound } from '../audio/sound';
 import { loadActiveRun, saveActiveRun } from '../store/activeRun';
 import { MIGRATIONS_KEY, loadLibrary, saveLibrary } from '../store/library';
-import { loadHistory } from '../store/history';
+import { addSession, loadHistory } from '../store/history';
 import { DEFAULT_SETTINGS, saveSettings } from '../store/settings';
 
 vi.mock('../hooks/useWakeLock', () => ({ useWakeLock: vi.fn() }));
@@ -558,5 +558,83 @@ describe('Runner resume versus start over', () => {
     const { sound } = setup(quick);
     cleanup();
     expect(sound.close).toHaveBeenCalled();
+  });
+});
+
+describe('Runner weights', () => {
+  const wt = (label: string, seconds: number, weighted = true): Step => ({ ...timed(label, seconds), id: `w-${label}`, weighted });
+  const weighty: Workout = {
+    ...quick,
+    id: 'weighty',
+    name: 'Weights day',
+    steps: [wt('Goblet Squat', 5), wt('Chin Ups', 5, false), wt('Bicep Curls', 5)],
+    rounds: 1,
+  };
+
+  const finishWeighty = async (opts: { sound?: boolean } = {}) => {
+    saveLibrary([weighty, quick]);
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<Runner id="weighty" navigate={vi.fn()} sound={fakeSound()} />);
+    await user.click(screen.getByRole('button', { name: 'Start' }));
+    tick(15_000);
+    return { user, opts };
+  };
+
+  it('asks for the weight of each tracked exercise only (N/A exercises are skipped)', async () => {
+    await finishWeighty();
+    expect(screen.getByLabelText('Weight for Goblet Squat')).toBeInTheDocument();
+    expect(screen.getByLabelText('Weight for Bicep Curls')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Weight for Chin Ups')).not.toBeInTheDocument();
+  });
+
+  it('saves the weights you enter with the session, in the chosen unit', async () => {
+    saveSettings({ ...DEFAULT_SETTINGS, weightUnit: 'lb' });
+    await finishWeighty();
+    fireEvent.change(screen.getByLabelText('Weight for Goblet Squat'), { target: { value: '35' } });
+    expect(loadHistory()[0].weights).toEqual([{ exercise: 'Goblet Squat', value: 35 }]);
+    expect(loadHistory()[0].unit).toBe('lb');
+    expect(screen.getAllByText('lb').length).toBeGreaterThan(0);
+  });
+
+  it('starts from what you lifted last time and saves it unless you change it', async () => {
+    addSession({
+      id: 'earlier',
+      workoutId: 'other',
+      workoutName: 'Other',
+      mode: 'interval',
+      startedAt: Date.now() - 86_400_000,
+      durationSec: 600,
+      roundsDone: 1,
+      laps: 0,
+      completed: true,
+      weights: [
+        { exercise: 'goblet squat', value: 12 },
+        { exercise: 'Bicep Curls', value: 8 },
+      ],
+      unit: 'kg',
+    });
+    await finishWeighty();
+    expect(screen.getByLabelText('Weight for Goblet Squat')).toHaveValue(12);
+    expect(screen.getByLabelText('Weight for Bicep Curls')).toHaveValue(8);
+    const mine = loadHistory().find((x) => x.workoutId === 'weighty')!;
+    expect(mine.weights).toEqual([
+      { exercise: 'Goblet Squat', value: 12 },
+      { exercise: 'Bicep Curls', value: 8 },
+    ]);
+  });
+
+  it('can copy one weight to every exercise', async () => {
+    const { user } = await finishWeighty();
+    fireEvent.change(screen.getByLabelText('Weight for Goblet Squat'), { target: { value: '16' } });
+    await user.click(screen.getByRole('button', { name: 'Use 16 kg for all' }));
+    expect(screen.getByLabelText('Weight for Bicep Curls')).toHaveValue(16);
+    expect(loadHistory()[0].weights).toHaveLength(2);
+  });
+
+  it('shows no weight section when nothing is tracked', async () => {
+    const { start } = setup(quick);
+    await start();
+    tick(5_000);
+    expect(screen.queryByText('Weights')).not.toBeInTheDocument();
   });
 });

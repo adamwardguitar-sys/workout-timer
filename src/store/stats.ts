@@ -1,4 +1,4 @@
-import type { Session } from './history';
+import type { Session, WeightUnit } from './history';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -19,20 +19,6 @@ export function thisWeek(sessions: Session[], now: number): { sessions: number; 
   const start = mondayOf(now).getTime();
   const mine = sessions.filter((s) => s.startedAt >= start && s.startedAt <= now);
   return { sessions: mine.length, seconds: mine.reduce((sum, s) => sum + s.durationSec, 0) };
-}
-
-/** Consecutive days with a session, counting back from today (or yesterday if you have not trained yet today). */
-export function streakDays(sessions: Session[], now: number): number {
-  const days = new Set(sessions.map((s) => dayKey(s.startedAt)));
-  const t = new Date(now);
-  let cursor = new Date(t.getFullYear(), t.getMonth(), t.getDate());
-  if (!days.has(dayKey(cursor))) cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
-  let count = 0;
-  while (days.has(dayKey(cursor))) {
-    count++;
-    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
-  }
-  return count;
 }
 
 export interface DayCell {
@@ -80,4 +66,54 @@ export function groupByDay(sessions: Session[]): { date: string; sessions: Sessi
     else groups.push({ date: k, sessions: [s] });
   }
   return groups;
+}
+
+export interface WeightPoint {
+  value: number;
+  unit: WeightUnit;
+  at: number;
+}
+
+export interface ExerciseProgress {
+  exercise: string;
+  latest: WeightPoint;
+  /** The most recent earlier weight that was different (same unit), if any. */
+  previous?: WeightPoint;
+}
+
+/** Every logged weight, oldest first, grouped by exercise name (case-insensitive). */
+function weightHistory(sessions: Session[]): Map<string, { exercise: string; points: WeightPoint[] }> {
+  const map = new Map<string, { exercise: string; points: WeightPoint[] }>();
+  const ordered = [...sessions].sort((a, b) => a.startedAt - b.startedAt);
+  for (const s of ordered) {
+    for (const w of s.weights ?? []) {
+      const key = w.exercise.trim().toLowerCase();
+      const entry = map.get(key) ?? { exercise: w.exercise.trim(), points: [] };
+      entry.exercise = w.exercise.trim(); // keep the most recent spelling
+      entry.points.push({ value: w.value, unit: s.unit ?? 'kg', at: s.startedAt });
+      map.set(key, entry);
+    }
+  }
+  return map;
+}
+
+/** The most recent weight for each exercise, keyed by lower-case name. */
+export function lastWeights(sessions: Session[]): Map<string, WeightPoint & { exercise: string }> {
+  const out = new Map<string, WeightPoint & { exercise: string }>();
+  for (const [key, e] of weightHistory(sessions)) out.set(key, { exercise: e.exercise, ...e.points[e.points.length - 1] });
+  return out;
+}
+
+/** Latest weight per exercise and how it changed, most recently used first. */
+export function exerciseProgress(sessions: Session[]): ExerciseProgress[] {
+  const rows: ExerciseProgress[] = [];
+  for (const e of weightHistory(sessions).values()) {
+    const latest = e.points[e.points.length - 1];
+    const previous = [...e.points]
+      .reverse()
+      .slice(1)
+      .find((p) => p.unit === latest.unit && p.value !== latest.value);
+    rows.push({ exercise: e.exercise, latest, ...(previous ? { previous } : {}) });
+  }
+  return rows.sort((a, b) => b.latest.at - a.latest.at);
 }

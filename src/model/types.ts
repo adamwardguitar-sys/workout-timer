@@ -8,6 +8,8 @@ export interface Step {
   seconds?: number;
   reps?: number;
   counter?: boolean;
+  /** Ask for the weight used for this exercise when the workout ends. Unticked means N/A. */
+  weighted?: boolean;
 }
 
 export interface Workout {

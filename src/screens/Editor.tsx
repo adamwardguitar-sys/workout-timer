@@ -134,6 +134,17 @@ function StepRow({ step, n, amrap, locked, onChange, onRemove }: RowProps) {
               onChange={(reps) => set({ reps })}
             />
           )}
+          {step.role === 'work' && (
+            <label className="check track-weight">
+              <input
+                type="checkbox"
+                aria-label={`Step ${n} track weight`}
+                checked={!!step.weighted}
+                onChange={(e) => set({ weighted: e.target.checked })}
+              />
+              Track weight
+            </label>
+          )}
           {amrap && step.kind === 'timed' && (
             <label className="check">
               <input

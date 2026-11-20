@@ -7,8 +7,13 @@ import {
   removeSession,
   saveHistory,
   setNote,
+  setWeights,
+  sessionFromRun,
+  trackedExercises,
   type Session,
 } from './history';
+import { startRun } from '../engine/runner';
+import type { Workout } from '../model/types';
 import { memStorage, throwingStorage } from '../test/memStorage';
 
 const sess = (over: Partial<Session> = {}): Session => ({
@@ -90,5 +95,68 @@ describe('history store', () => {
     expect(out.added).toBe(2);
     expect(loadHistory(st).map((s) => s.id)).toEqual(['s1', 's2', 's3']);
     expect(importSessions([sess({ id: 's2' })], st).added).toBe(0);
+  });
+
+  it('setWeights stores positive weights with the unit, drops blanks and zeros, and clears when none are left', () => {
+    const st = memStorage();
+    addSession(sess(), st);
+    const out = setWeights(
+      's1',
+      [
+        { exercise: 'Goblet Squat', value: 16 },
+        { exercise: 'Bicep Curls', value: 0 },
+        { exercise: '  ', value: 5 },
+        { exercise: 'Flat Bench', value: 22.5 },
+      ],
+      'kg',
+      st,
+    );
+    expect(out[0].weights).toEqual([
+      { exercise: 'Goblet Squat', value: 16 },
+      { exercise: 'Flat Bench', value: 22.5 },
+    ]);
+    expect(out[0].unit).toBe('kg');
+    const cleared = setWeights('s1', [], 'kg', st);
+    expect(cleared[0].weights).toBeUndefined();
+    expect(cleared[0].unit).toBeUndefined();
+  });
+
+  it('accepts sessions with the optional tracking fields and rejects malformed ones', () => {
+    const good = sess({ tracked: ['A'], weights: [{ exercise: 'A', value: 10 }], unit: 'lb' });
+    const st = memStorage();
+    saveHistory([good], st);
+    expect(loadHistory(st)).toEqual([good]);
+    const bad = { ...sess({ id: 'b' }), weights: [{ exercise: 'A', value: 'heavy' }] };
+    const st2 = memStorage({ [HISTORY_KEY]: JSON.stringify([bad]) });
+    expect(loadHistory(st2)).toEqual([]);
+  });
+});
+
+describe('weight tracking from a run', () => {
+  const w: Workout = {
+    id: 'w',
+    name: 'W',
+    mode: 'interval',
+    prepSeconds: 0,
+    rounds: 1,
+    advance: 'step',
+    restBetweenRounds: 0,
+    steps: [
+      { id: '1', label: 'Goblet Squat', kind: 'timed', role: 'work', seconds: 40, weighted: true },
+      { id: '2', label: 'Chin Ups', kind: 'timed', role: 'work', seconds: 40 },
+      { id: '3', label: 'Rest', kind: 'timed', role: 'rest', seconds: 20, weighted: true },
+      { id: '4', label: ' Goblet Squat ', kind: 'timed', role: 'work', seconds: 40, weighted: true },
+      { id: '5', label: 'Bicep Curls', kind: 'timed', role: 'work', seconds: 40, weighted: true },
+    ],
+  };
+
+  it('trackedExercises lists each weighted work exercise once, in order', () => {
+    expect(trackedExercises(w)).toEqual(['Goblet Squat', 'Bicep Curls']);
+  });
+
+  it('a logged session remembers which exercises could be weighed', () => {
+    expect(sessionFromRun(startRun(w, 0), 1000).tracked).toEqual(['Goblet Squat', 'Bicep Curls']);
+    const none = { ...w, steps: w.steps.map((x) => ({ ...x, weighted: false })) };
+    expect(sessionFromRun(startRun(none, 0), 1000).tracked).toBeUndefined();
   });
 });
