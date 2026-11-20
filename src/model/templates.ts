@@ -26,7 +26,7 @@ export function templateFor(mode: Mode): Workout {
     id: newId(),
     name: NAMES[mode],
     mode,
-    prepSeconds: 10,
+    prepSeconds: 30,
     advance: 'step' as const,
     restBetweenRounds: 0,
   };

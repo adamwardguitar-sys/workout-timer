@@ -53,4 +53,10 @@ describe('templateFor', () => {
     expect(w.restBetweenSteps).toBe(20);
     expect(w.rounds).toBe(3);
   });
+
+  it('every template starts with a 30 second get-ready', () => {
+    for (const m of ['interval', 'tabata', 'emom', 'amrap', 'flow', 'custom'] as const) {
+      expect(templateFor(m).prepSeconds).toBe(30);
+    }
+  });
 });

@@ -91,6 +91,34 @@ function migrateOldSeeds(ws: Workout[]): { workouts: Workout[]; changed: boolean
   return { workouts, changed };
 }
 
+export const MIGRATIONS_KEY = 'workout-timer:migrations:v1';
+
+/** The default get-ready went from 10s to 30s: move workouts still on the old default, once. */
+function applyPrep30(ws: Workout[], storage: Storage | undefined): { workouts: Workout[]; changed: boolean } {
+  let done: unknown = [];
+  try {
+    done = JSON.parse(storage?.getItem(MIGRATIONS_KEY) ?? '[]');
+  } catch {
+    done = [];
+  }
+  const flags = Array.isArray(done) ? (done as string[]) : [];
+  if (flags.includes('prep-30')) return { workouts: ws, changed: false };
+  const workouts = ws.map((w) => (w.prepSeconds === 10 ? { ...w, prepSeconds: 30 } : w));
+  try {
+    storage?.setItem(MIGRATIONS_KEY, JSON.stringify([...flags, 'prep-30']));
+  } catch {
+    /* ignore */
+  }
+  return { workouts, changed: workouts.some((w, i) => w !== ws[i]) };
+}
+
+function upgrade(ws: Workout[], storage: Storage | undefined): Workout[] {
+  const a = migrateOldSeeds(ws);
+  const b = applyPrep30(a.workouts, storage);
+  if (a.changed || b.changed) saveLibrary(b.workouts, storage);
+  return b.workouts;
+}
+
 export interface CorruptEntry {
   savedAt: number;
   raw: string;
@@ -139,23 +167,20 @@ export function loadLibrary(storage: Storage | undefined = defaultStorage()): Wo
   if (raw === null) {
     const seeds = seedWorkouts();
     saveLibrary(seeds, storage);
+    applyPrep30(seeds, storage); // fresh installs are already on 30s; just record it
     return seeds;
   }
   try {
     const parsed: unknown = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       const valid = parsed.filter(isWorkout);
-      if (valid.length === parsed.length) {
-        const m = migrateOldSeeds(valid);
-        if (m.changed) saveLibrary(m.workouts, storage);
-        return m.workouts;
-      }
+      if (valid.length === parsed.length) return upgrade(valid, storage);
       if (valid.length > 0) {
         // keep what is readable, set the rest aside so nothing is silently lost
         addCorrupt(raw, storage);
-        const m = migrateOldSeeds(valid);
-        saveLibrary(m.workouts, storage);
-        return m.workouts;
+        const kept = upgrade(valid, storage);
+        saveLibrary(kept, storage);
+        return kept;
       }
     }
   } catch {
@@ -164,6 +189,7 @@ export function loadLibrary(storage: Storage | undefined = defaultStorage()): Wo
   addCorrupt(raw, storage);
   const seeds = seedWorkouts();
   saveLibrary(seeds, storage);
+  applyPrep30(seeds, storage);
   return seeds;
 }
 

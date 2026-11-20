@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { Mock } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { Runner } from './Runner';
@@ -8,7 +8,7 @@ import { templateFor } from '../model/templates';
 import type { Step, Workout } from '../model/types';
 import type { Sound } from '../audio/sound';
 import { loadActiveRun, saveActiveRun } from '../store/activeRun';
-import { saveLibrary } from '../store/library';
+import { MIGRATIONS_KEY, loadLibrary, saveLibrary } from '../store/library';
 import { DEFAULT_SETTINGS, saveSettings } from '../store/settings';
 
 vi.mock('../hooks/useWakeLock', () => ({ useWakeLock: vi.fn() }));
@@ -80,6 +80,8 @@ const cues = (sound: Sound) => (sound.play as ReturnType<typeof vi.fn>).mock.cal
 
 beforeEach(() => {
   localStorage.clear();
+  // these fixtures deliberately use a 10s get-ready, so mark the 30s default migration as already done
+  localStorage.setItem(MIGRATIONS_KEY, JSON.stringify(['prep-30']));
   vi.useFakeTimers();
   // Testing Library only drains timers under fake timers when it sees a `jest` global.
   (globalThis as unknown as { jest: unknown }).jest = {
@@ -326,5 +328,49 @@ describe('Runner audio recovery', () => {
     await start();
     tick(500);
     expect(screen.queryByRole('button', { name: 'Tap to resume' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Runner start screen: rounds', () => {
+  const rounds = () => screen.getByLabelText('Rounds') as HTMLInputElement;
+
+  it('shows the workout rounds and lets you choose another number for this run only', async () => {
+    const { user, start } = setup(noPrep);
+    expect(rounds()).toHaveValue(2);
+    fireEvent.change(rounds(), { target: { value: '1' } });
+    await start();
+    tick(40_000);
+    expect(screen.getByRole('heading', { name: 'Workout complete' })).toBeInTheDocument();
+    expect(loadLibrary().find((w) => w.id === 'noprep')?.rounds).toBe(2);
+    expect(user).toBeDefined();
+  });
+
+  it('Unlimited keeps the workout going past any number of rounds', async () => {
+    const { user, start } = setup(noPrep);
+    await user.click(screen.getByLabelText('Unlimited'));
+    expect(rounds()).toBeDisabled();
+    await start();
+    tick(600_000);
+    expect(screen.queryByRole('heading', { name: 'Workout complete' })).not.toBeInTheDocument();
+    expect(screen.getByText(/^Round \d+$/)).toBeInTheDocument();
+  });
+
+  it('starts from Unlimited when the workout is set to until-I-stop, and back to a number', async () => {
+    const { user } = setup(flow);
+    expect(screen.getByLabelText('Unlimited')).toBeChecked();
+    await user.click(screen.getByLabelText('Unlimited'));
+    expect(rounds()).toBeEnabled();
+    expect(Number(rounds().value)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('blocks Start for 0 rounds', () => {
+    setup(noPrep);
+    fireEvent.change(rounds(), { target: { value: '0' } });
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
+  });
+
+  it('is not offered for AMRAP or Tabata, where rounds are fixed by the mode', () => {
+    setup(amrap);
+    expect(screen.queryByLabelText('Rounds')).not.toBeInTheDocument();
   });
 });

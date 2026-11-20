@@ -1,5 +1,6 @@
 import {
   LIBRARY_KEY,
+  MIGRATIONS_KEY,
   clearCorrupt,
   exportLibrary,
   listCorrupt,
@@ -22,10 +23,10 @@ describe('seedWorkouts', () => {
     ]);
   });
 
-  it('Full Body A and B run 40s on / 20s off through the list, once, after a 10s get ready', () => {
+  it('Full Body A and B run 40s on / 20s off through the list, once, after a 30s get ready', () => {
     const [a, b] = seedWorkouts();
     for (const w of [a, b]) {
-      expect(w).toMatchObject({ mode: 'interval', prepSeconds: 10, rounds: 1, restBetweenSteps: 20 });
+      expect(w).toMatchObject({ mode: 'interval', prepSeconds: 30, rounds: 1, restBetweenSteps: 20 });
       expect(w.steps).toHaveLength(10);
       expect(w.steps.every((x) => x.kind === 'timed' && x.role === 'work' && x.seconds === 40)).toBe(true);
       expect(validateWorkout(w)).toEqual([]);
@@ -34,7 +35,7 @@ describe('seedWorkouts', () => {
 
   it('the Athenian Complex is a flow: tap once per round, 2:00 rest, until I stop', () => {
     const c = seedWorkouts()[2];
-    expect(c).toMatchObject({ mode: 'flow', prepSeconds: 10, rounds: null, advance: 'round', restBetweenRounds: 120 });
+    expect(c).toMatchObject({ mode: 'flow', prepSeconds: 30, rounds: null, advance: 'round', restBetweenRounds: 120 });
     expect(c.steps.every((x) => x.kind === 'tap' && x.role === 'work')).toBe(true);
     expect(validateWorkout(c)).toEqual([]);
   });
@@ -117,7 +118,7 @@ describe('moving untouched old Full Body seeds to 40s/20s', () => {
     const edited = { ...oldFlowSeed('Full Body A', FULL_BODY_A, 'idA'), restBetweenRounds: 90 };
     const renamedStep = oldFlowSeed('Full Body B', FULL_BODY_B, 'idB');
     renamedStep.steps[0].label = 'My own first move';
-    const st = memStorage();
+    const st = memStorage({ [MIGRATIONS_KEY]: '["prep-30"]' });
     saveLibrary([edited, renamedStep], st);
     const ws = loadLibrary(st);
     expect(ws[0]).toEqual(edited);
@@ -126,9 +127,30 @@ describe('moving untouched old Full Body seeds to 40s/20s', () => {
 
   it('does not touch a workout of the same name that is not a flow', () => {
     const mine = { ...oldFlowSeed('Full Body A', FULL_BODY_A, 'idA'), mode: 'custom' as const };
-    const st = memStorage();
+    const st = memStorage({ [MIGRATIONS_KEY]: '["prep-30"]' });
     saveLibrary([mine], st);
     expect(loadLibrary(st)[0]).toEqual(mine);
+  });
+});
+
+describe('30 second get-ready default', () => {
+  const withPrep = (w: Workout, prepSeconds: number): Workout => ({ ...w, prepSeconds });
+
+  it('moves workouts still on the old 10s default to 30s, once, and leaves other values alone', () => {
+    const [a, b, c] = seedWorkouts();
+    const st = memStorage();
+    saveLibrary([withPrep(a, 10), withPrep(b, 15), withPrep(c, 0)], st);
+    expect(loadLibrary(st).map((w) => w.prepSeconds)).toEqual([30, 15, 0]);
+    // you choose 10 yourself afterwards: it must stay 10
+    saveLibrary(loadLibrary(st).map((w) => withPrep(w, 10)), st);
+    expect(loadLibrary(st).map((w) => w.prepSeconds)).toEqual([10, 10, 10]);
+  });
+
+  it('a fresh install is already on 30s and a later 10s choice is kept', () => {
+    const st = memStorage();
+    expect(loadLibrary(st).map((w) => w.prepSeconds)).toEqual([30, 30, 30]);
+    saveLibrary(loadLibrary(st).map((w) => withPrep(w, 10)), st);
+    expect(loadLibrary(st).map((w) => w.prepSeconds)).toEqual([10, 10, 10]);
   });
 });
 

@@ -53,6 +53,8 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
   const [needsTap, setNeedsTap] = useState(run !== null);
   const [, setFrame] = useState(0);
   const [startError, setStartError] = useState<string | null>(null);
+  // rounds picked on the start screen for this run only ('saved' = use the workout's own setting)
+  const [roundsChoice, setRoundsChoice] = useState<number | null | 'saved'>('saved');
 
   useEffect(() => {
     sound.setVolume(settings.volume);
@@ -119,10 +121,13 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
     else apply(out);
   };
 
+  const chosenRounds = roundsChoice === 'saved' ? workout.rounds : roundsChoice;
+  const canChooseRounds = workout.mode !== 'amrap' && workout.mode !== 'tabata';
+
   function begin() {
     void sound.unlock();
     try {
-      const st = startRun(workout!, Date.now(), settings.beepSeconds);
+      const st = startRun({ ...workout!, rounds: chosenRounds }, Date.now(), settings.beepSeconds);
       setNeedsTap(false);
       apply(st, [{ type: 'segment-start', segment: currentSegment(st) }]);
     } catch (e) {
@@ -139,13 +144,39 @@ export function Runner({ id, navigate, sound: injected }: { id: string; navigate
 
   // ---- start screen ----
   if (!run) {
-    const errors = validateWorkout(workout);
+    const errors = validateWorkout({ ...workout, rounds: chosenRounds });
     return (
       <section className="screen run-start">
         <h1>{workout.name.trim() || 'Untitled'}</h1>
         <p className="muted">
           {workout.steps.length} steps · get ready {formatTime(workout.prepSeconds)}
         </p>
+        {canChooseRounds && (
+          <div className="start-options">
+            <span className="field-label">Rounds</span>
+            <div className="rounds-field">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                aria-label="Rounds"
+                disabled={chosenRounds === null}
+                value={chosenRounds ?? ''}
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => setRoundsChoice(Math.max(0, Math.floor(Number(e.target.value)) || 0))}
+              />
+              <label className="check">
+                <input
+                  type="checkbox"
+                  aria-label="Unlimited"
+                  checked={chosenRounds === null}
+                  onChange={(e) => setRoundsChoice(e.target.checked ? null : (workout.rounds ?? 3))}
+                />
+                Unlimited
+              </label>
+            </div>
+          </div>
+        )}
         {(errors.length > 0 || startError) && (
           <ul className="errors">
             {[...errors, ...(startError ? [startError] : [])].map((e) => (

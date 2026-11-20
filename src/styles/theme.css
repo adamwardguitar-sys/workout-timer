@@ -144,3 +144,4 @@ h1, h2, .run-title, .run-label, .item, .card-title { overflow-wrap: anywhere; }
 .notice { background: var(--panel-grad), var(--panel); border: 1px solid var(--accent); border-radius: var(--radius); padding: 12px; margin: 0.75rem 0; }
 .notice p { margin: 0 0 0.5rem; }
 .notice-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.start-options { display: grid; justify-items: center; gap: 6px; } .start-options .rounds-field { justify-content: center; }
