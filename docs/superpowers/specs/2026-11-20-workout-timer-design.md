@@ -24,10 +24,21 @@ They currently use the *Interval Timer* app and want to build on it. What it get
 - **Phone-first and desktop-friendly:** one codebase, installable, works offline.
 - **Look:** modern and slick. Dark chrome/granite background, turquoise/spearmint accents, white text that pops.
 
+## Revision 2 (2026-11-20): workout tracker
+
+Owner asked for a professional, simple timer *and tracker*, leaving the product decisions to the builder.
+
+- **Sessions are logged automatically** (workout, start time, active seconds excluding pauses, rounds done, AMRAP laps, completed or ended early, optional note). Ending a workout before 30 seconds is treated as an accidental start and not logged. A run that finishes while the app is closed is logged when the app next opens.
+- **History tab:** this-week sessions and time, day streak (grace for "not yet today"), a 4-week Monday-first activity grid, and the session list grouped by day with notes and delete.
+- **Finish summary** with time, rounds and a note; **workout cards** show last done and session count.
+- **Navigation:** bottom tab bar (Workouts, History, Settings) on the main screens; hidden while editing or running.
+- **Backups** (version 2) include history; version 1 backups still import.
+- **Wait for a tap between rounds:** opt-in per workout or per run, off by default; adds a tap-to-continue gate at the start of each round after the first.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.
-- Workout history, stats or charts.
+- Charts beyond the activity grid; per-exercise weight and rep logging (possible later).
 - Spoken exercise names (a possible later addition).
 - Reliable audio with the screen locked or while another app is in the foreground (see Constraints).
 

@@ -13,6 +13,12 @@ A phone-first workout timer you can install to your home screen. Build a library
 
 Every workout has a configurable **get ready** countdown (30 seconds by default), your own work and rest steps, and a number of rounds (or "until I stop"). You can also pick the rounds, or Unlimited, on the screen you see before each workout starts. It starts with three workouts in the library: Full Body A and Full Body B (40s on, 20s off through the list) and Kettlebell Rounds (Athenian Complex).
 
+## Tracking
+
+Every workout you do is logged automatically, including ones you end early (anything past 30 seconds). Open the **History** tab to see this week's sessions and time, your day streak, a 4-week activity grid, and every past session with its time, rounds and an optional note. Workout cards show when you last did them and how many times. Backups include your history.
+
+An optional **Wait for a tap between rounds** setting (off by default) pauses at the start of each new round until you tap. You can switch it on in the editor or just for one run on the start screen.
+
 ## Install on your phone
 
 Open the site in Safari (iPhone) or Chrome (Android), then **Share → Add to Home Screen**. It opens full screen and works offline.
