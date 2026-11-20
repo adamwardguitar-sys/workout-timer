@@ -54,3 +54,13 @@ export function relativeDay(ts: number, now: number): string {
   const m = Math.floor(days / 30);
   return `${m} ${m === 1 ? 'month' : 'months'} ago`;
 }
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "2026-11-20" -> "Fri 20 Nov". */
+export function dateLabel(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return `${WEEKDAYS[dt.getDay()]} ${d} ${MONTHS[m - 1]}`;
+}

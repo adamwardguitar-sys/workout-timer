@@ -129,10 +129,6 @@ export function Library({ navigate }: { navigate: Navigate }) {
     <section className="screen">
       <header className="screen-head">
         <h1>Library</h1>
-        <button className="btn ghost" onClick={() => navigate({ name: 'settings' })}>
-          <span aria-hidden>⚙</span>
-          <span className="sr-only">Settings</span>
-        </button>
       </header>
 
       {corrupt.length > 0 && (

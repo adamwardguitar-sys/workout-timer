@@ -22,7 +22,7 @@ describe('MODE_LABELS', () => {
   });
 });
 
-import { formatDuration, relativeDay } from './format';
+import { dateLabel, formatDuration, relativeDay } from './format';
 
 describe('formatDuration', () => {
   it.each([
@@ -47,4 +47,11 @@ describe('relativeDay', () => {
     [at(11, 2), '2 weeks ago'],
     [at(9, 1), '2 months ago'],
   ])('%#', (ts, out) => expect(relativeDay(ts, NOW)).toBe(out));
+});
+
+describe('dateLabel', () => {
+  it('formats a YYYY-MM-DD key as weekday, day and month', () => {
+    expect(dateLabel('2026-11-20')).toBe('Fri 20 Nov');
+    expect(dateLabel('2026-01-05')).toBe('Mon 5 Jan');
+  });
 });

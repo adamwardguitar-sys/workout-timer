@@ -70,12 +70,6 @@ describe('Library', () => {
     expect(navigate).toHaveBeenCalledWith({ name: 'editor', id: first.id });
   });
 
-  it('the settings button opens settings', async () => {
-    const { navigate, user } = setup();
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(navigate).toHaveBeenCalledWith({ name: 'settings' });
-  });
-
   it('disables Start for a workout that fails validation', () => {
     const ws = seedWorkouts();
     ws[0].steps = [];
