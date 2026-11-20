@@ -1,0 +1,38 @@
+export type Mode = 'interval' | 'tabata' | 'emom' | 'amrap' | 'flow' | 'custom';
+
+export interface Step {
+  id: string;
+  label: string;
+  kind: 'timed' | 'tap';
+  role: 'work' | 'rest';
+  seconds?: number;
+  reps?: number;
+  counter?: boolean;
+}
+
+export interface Workout {
+  id: string;
+  name: string;
+  mode: Mode;
+  prepSeconds: number;
+  steps: Step[];
+  rounds: number | null;
+  advance: 'step' | 'round';
+  restBetweenRounds: number;
+}
+
+export interface SegmentItem {
+  label: string;
+  reps?: number;
+}
+
+export interface Segment {
+  id: string;
+  role: 'prep' | 'work' | 'rest';
+  label: string;
+  seconds: number | null;
+  round: number;
+  items?: SegmentItem[];
+  itemIndex?: number;
+  counter?: boolean;
+}
