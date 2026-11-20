@@ -1,0 +1,36 @@
+:root {
+  --bg: #14171a;
+  --bg-2: #1d2226;
+  --panel: #232a2f;
+  --panel-edge: rgba(255, 255, 255, 0.14);
+  --accent: #2ee6c5;
+  --accent-ink: #04201b;
+  --text: #ffffff;
+  --text-dim: #aab4ba;
+  --rest: #5aa9ff;
+  --danger: #ff6b6b;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --gutter: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { min-height: 100%; }
+
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, #2b3238 0%, transparent 60%),
+    linear-gradient(160deg, var(--bg-2), var(--bg));
+  background-attachment: fixed;
+}
+
+.app { max-width: 720px; margin: 0 auto; padding: var(--gutter); }
+
+h1 { font-size: 1.6rem; margin: 0 0 1rem; }
+
+.num { font-variant-numeric: tabular-nums; }

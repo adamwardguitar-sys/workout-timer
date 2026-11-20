@@ -1,0 +1,7 @@
+export type Route =
+  | { name: 'library' }
+  | { name: 'editor'; id: string }
+  | { name: 'run'; id: string }
+  | { name: 'settings' };
+
+export type Navigate = (route: Route) => void;
