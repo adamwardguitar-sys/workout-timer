@@ -54,4 +54,25 @@ describe('useLibrary', () => {
     act(() => result.current.importMerge(seedWorkouts().slice(0, 2)));
     expect(result.current.workouts).toHaveLength(5);
   });
+
+  it('persists synchronously, so a screen that unmounts right after saving cannot lose the change', () => {
+    const { result } = renderHook(() => useLibrary());
+    const first = result.current.workouts[0];
+    act(() => {
+      result.current.save({ ...first, id: 'created-then-navigated', name: 'Quick' });
+      // no render has happened yet inside this callback
+      expect(loadLibrary().map((w) => w.id)).toContain('created-then-navigated');
+    });
+  });
+
+  it('successive updates in the same tick all land', () => {
+    const { result } = renderHook(() => useLibrary());
+    const [a, b] = result.current.workouts;
+    act(() => {
+      result.current.remove(a.id);
+      result.current.remove(b.id);
+    });
+    expect(result.current.workouts).toHaveLength(1);
+    expect(loadLibrary()).toHaveLength(1);
+  });
 });
