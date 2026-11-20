@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Route } from './route';
+import { Editor } from './screens/Editor';
 import { Library } from './screens/Library';
 
 export type { Route } from './route';
@@ -13,7 +14,8 @@ export function App() {
       {route.name === 'library' && (
         <Library navigate={navigate} />
       )}
-      {route.name !== 'library' && (
+      {route.name === 'editor' && <Editor id={route.id} navigate={navigate} />}
+      {route.name !== 'library' && route.name !== 'editor' && (
         <section>
           <h1>{route.name}</h1>
           <button onClick={() => navigate({ name: 'library' })}>Back</button>

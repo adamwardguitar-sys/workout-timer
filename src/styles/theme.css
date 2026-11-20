@@ -60,3 +60,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .mode-option { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius-sm); text-align: left; }
 .mode-option span { color: var(--text-dim); font-size: 0.85rem; }
 .empty { color: var(--text-dim); }
+
+/* ---- editor ---- */
+.field { display: grid; gap: 6px; margin: 1rem 0; }
+.field-label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--panel-edge); border-radius: var(--radius-sm); min-height: 44px; padding: 0 10px; max-width: 100%; }
+input[type='number'] { width: 4.2rem; text-align: center; }
+input[type='checkbox'], input[type='radio'] { min-height: 0; width: 20px; height: 20px; accent-color: var(--accent); }
+.settings-grid { display: grid; gap: 14px; margin-bottom: 1rem; }
+.time-field, .rounds-field { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.time-field .field-label, .rounds-field .field-label { flex-basis: 100%; }
+.check { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.advance { border: 0; padding: 0; margin: 0; display: grid; gap: 4px; }
+.step-list { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 10px; }
+.step-row { display: flex; align-items: flex-start; gap: 8px; padding: 10px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius); }
+.step-row.dragging { opacity: 0.8; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+.step-fields { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.step-name { width: 100%; }
+.step-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.errors { color: var(--danger); padding-left: 1.2rem; }
