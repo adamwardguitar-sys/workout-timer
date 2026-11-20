@@ -27,7 +27,6 @@ describe('templateFor', () => {
 
   it('flow taps once per round, forever, with 2:00 rest and tap steps only', () => {
     const w = templateFor('flow');
-    expect(w.advance).toBe('round');
     expect(w.rounds).toBeNull();
     expect(w.restBetweenRounds).toBe(120);
     expect(w.steps.length).toBeGreaterThan(0);

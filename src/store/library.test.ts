@@ -36,7 +36,7 @@ describe('seedWorkouts', () => {
 
   it('the Athenian Complex is a flow: tap once per round, 2:00 rest, until I stop', () => {
     const c = seedWorkouts()[2];
-    expect(c).toMatchObject({ mode: 'flow', prepSeconds: 30, rounds: null, advance: 'round', restBetweenRounds: 120 });
+    expect(c).toMatchObject({ mode: 'flow', prepSeconds: 30, rounds: null, restBetweenRounds: 120 });
     expect(c.steps.every((x) => x.kind === 'tap' && x.role === 'work')).toBe(true);
     expect(validateWorkout(c)).toEqual([]);
   });

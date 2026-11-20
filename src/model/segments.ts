@@ -16,19 +16,16 @@ export function segmentsForRound(w: Workout, round: number): Segment[] {
     segs.push({ ...seg, id: `${round}:${segs.length}`, round });
 
   const stepRest = w.restBetweenSteps ?? 0;
-  const paced = (s: Workout['steps'][number]) => s.role === 'work' && (s.kind === 'timed' || w.advance === 'step');
+  // only timed exercises get the shared rest: a round of untimed exercises is one block
+  const paced = (s: Workout['steps'][number]) => s.role === 'work' && s.kind === 'timed';
   let mergedEmitted = false;
-  let tapIndex = 0;
   for (let i = 0; i < w.steps.length; i++) {
     const s = w.steps[i];
     if (isTapWork(s)) {
-      if (w.advance === 'round') {
-        if (mergedEmitted) continue;
-        mergedEmitted = true;
-        push({ role: 'work', label: 'Exercises', seconds: null, items });
-      } else {
-        push({ role: 'work', label: s.label, seconds: null, items, itemIndex: tapIndex++ });
-      }
+      // all untimed exercises in a round become one block, ended by a single tap
+      if (mergedEmitted) continue;
+      mergedEmitted = true;
+      push({ role: 'work', label: 'Exercises', seconds: null, items });
     } else if (s.kind === 'tap') {
       push({ role: s.role, label: s.label, seconds: null });
     } else {

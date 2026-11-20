@@ -44,7 +44,6 @@ const flow: Workout = {
   advance: 'round',
   restBetweenRounds: 120,
 };
-const flowStep: Workout = { ...flow, id: 'flowstep', advance: 'step', steps: [tapStep('A'), tapStep('B'), tapStep('C')] };
 const list3: Workout = {
   ...interval,
   id: 'list3',
@@ -75,7 +74,7 @@ const tick = (ms: number) =>
   });
 
 function setup(w: Workout, opts: { skipStart?: boolean } = {}) {
-  saveLibrary([interval, noPrep, flow, flowStep, quick, amrap, list3]);
+  saveLibrary([interval, noPrep, flow, quick, amrap, list3]);
   const navigate = vi.fn();
   const sound = fakeSound();
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -208,13 +207,6 @@ describe('Runner tap and rest', () => {
     expect(screen.getByText('5 Rows')).toBeInTheDocument();
   });
 
-  it('tap per exercise highlights the current exercise and Done moves along', async () => {
-    const { user, start } = setup(flowStep);
-    await start();
-    expect(screen.getByText('A').closest('li')).toHaveAttribute('aria-current', 'step');
-    await user.click(screen.getByRole('button', { name: 'Done' }));
-    expect(screen.getByText('B').closest('li')).toHaveAttribute('aria-current', 'step');
-  });
 });
 
 describe('Runner pause, finish and AMRAP', () => {
@@ -447,15 +439,15 @@ describe('Runner history', () => {
 });
 
 describe('Runner protection against stray taps', () => {
-  it('ignores a second tap on Done that comes right after the first', async () => {
-    const { user, start } = setup(flowStep);
+  it('ignores a tap that lands right after Round done (the rest controls appear under the same finger)', async () => {
+    const { user, start } = setup(flow);
     await start();
-    await user.click(screen.getByRole('button', { name: 'Done' }));
-    await user.click(screen.getByRole('button', { name: 'Done' }));
-    expect(screen.getByText('B').closest('li')).toHaveAttribute('aria-current', 'step');
+    await user.click(screen.getByRole('button', { name: 'Round done' }));
+    await user.click(screen.getByRole('button', { name: 'Add 15 seconds' }));
+    expect(clock()).toHaveTextContent('2:00');
     tick(500);
-    await user.click(screen.getByRole('button', { name: 'Done' }));
-    expect(screen.getByText('C').closest('li')).toHaveAttribute('aria-current', 'step');
+    await user.click(screen.getByRole('button', { name: 'Add 15 seconds' }));
+    expect(clock()).toHaveTextContent('2:15');
   });
 
   it('ignores a quick second tap on +1 round, and Undo round takes one back', async () => {
@@ -472,18 +464,6 @@ describe('Runner protection against stray taps', () => {
     expect(screen.getByText('Rounds: 1')).toBeInTheDocument();
   });
 
-  it('asks before a Skip that would end the workout', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
-    const { user, start } = setup(quick);
-    await start();
-    tick(500);
-    await user.click(screen.getByRole('button', { name: 'Next exercise' }));
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('heading', { name: 'Workout complete' })).not.toBeInTheDocument();
-    tick(500);
-    await user.click(screen.getByRole('button', { name: 'Next exercise' }));
-    expect(screen.getByRole('heading', { name: 'Workout complete' })).toBeInTheDocument();
-  });
 });
 
 describe('Runner resume versus start over', () => {
@@ -587,56 +567,38 @@ describe('Runner weights', () => {
 });
 
 describe('Runner icons', () => {
-  it('uses icons for quit, previous and skip, keeping their accessible names', async () => {
+  it('uses an icon for quit, keeping its accessible name', async () => {
     const { start } = setup(noPrep);
     await start();
-    const container = document.body;
-    expect(container.textContent).not.toMatch(/[✕⏮⏭]/u);
+    expect(document.body.textContent).not.toMatch(/[✕⏮⏭]/u);
     expect(screen.getByRole('button', { name: 'Quit' }).querySelector('svg')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Previous exercise' }).querySelector('svg')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Next exercise' }).querySelector('svg')).not.toBeNull();
   });
 });
 
-describe('Runner controls follow the mode', () => {
-  const label = () => screen.getByTestId('clock');
+describe('Runner never lets you tap through exercises', () => {
+  const SKIPPERS = ['Next exercise', 'Previous exercise', 'Skip rest', 'Skip get ready', 'Finish now', 'Previous', 'Skip'];
+  const noSkippers = () => {
+    for (const name of SKIPPERS) expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+  };
 
-  it('Timer: Next exercise skips the rest and Previous exercise goes back to the exercise, never to a rest', async () => {
-    const { user, start } = setup(list3);
-    await start();
-    expect(screen.getByText('A')).toBeInTheDocument();
-    tick(500);
-    await user.click(screen.getByRole('button', { name: 'Next exercise' }));
-    expect(screen.getByText('B')).toBeInTheDocument();
-    expect(label()).toHaveTextContent('0:40');
-    tick(500);
-    await user.click(screen.getByRole('button', { name: 'Previous exercise' }));
-    expect(screen.getByText('A')).toBeInTheDocument();
-  });
-
-  it('Timer: during a rest the forward button is Skip rest and it goes to the next exercise', async () => {
-    const { user, start } = setup(list3);
-    await start();
-    tick(45_000);
-    expect(screen.getByText('Rest')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Skip rest' }));
-    expect(screen.getByText('B')).toBeInTheDocument();
-  });
-
-  it('Timer: during get ready the forward button is Skip get ready', async () => {
-    const { user, start } = setup(interval);
-    await start();
-    expect(screen.queryByRole('button', { name: 'Previous exercise' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Skip get ready' }));
-    expect(screen.getByText('Squats')).toBeInTheDocument();
-  });
-
-  it('Timer: nothing to tap, ever (no Done or Round done button)', async () => {
+  it('Timer: only Pause while it plays (exercise and rest alike), and it needs no taps', async () => {
     const { start } = setup(list3);
     await start();
+    tick(1_000);
+    noSkippers();
     expect(screen.queryByRole('button', { name: /done/i })).not.toBeInTheDocument();
-    tick(45_000);
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    tick(45_000); // into a rest
+    expect(screen.getByText('Rest')).toBeInTheDocument();
+    noSkippers();
     expect(screen.queryByRole('button', { name: /done/i })).not.toBeInTheDocument();
+  });
+
+  it('Timer: get ready has no skip either', async () => {
+    const { start } = setup(interval);
+    await start();
+    expect(screen.getByText('Get ready')).toBeInTheDocument();
+    noSkippers();
   });
 
   it('Timer: plays all the way through every round on its own', async () => {
@@ -646,43 +608,31 @@ describe('Runner controls follow the mode', () => {
     expect(screen.getByRole('heading', { name: 'Workout complete' })).toBeInTheDocument();
   });
 
-  it('Open-ended rounds: the round shows only Round done (no previous/next that would skip the whole round)', async () => {
+  it('Open-ended rounds: the round has only Round done', async () => {
     const { start } = setup(flow);
     await start();
     expect(screen.getByRole('button', { name: 'Round done' })).toBeInTheDocument();
-    for (const name of ['Previous exercise', 'Next exercise', 'Skip rest', 'Skip get ready', 'Pause']) {
-      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
-    }
+    noSkippers();
+    expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
   });
 
-  it('Open-ended rounds: during the rest you can pause or skip the rest, and skipping starts the next round', async () => {
+  it('Open-ended rounds: the rest runs by itself (pause and adjust only), then the next round appears', async () => {
     const { user, start } = setup(flow);
     await start();
     await user.click(screen.getByRole('button', { name: 'Round done' }));
     tick(500);
     expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Previous exercise' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Skip rest' }));
+    noSkippers();
+    tick(120_000);
     expect(screen.getByText('Round 2')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Round done' })).toBeInTheDocument();
   });
 
-  it('per-exercise tapping keeps just Done', async () => {
-    const { start } = setup(flowStep);
+  it('AMRAP: add rounds, undo, pause: no early-finish button (Quit ends it)', async () => {
+    const { start } = setup(amrap);
     await start();
-    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Next exercise' })).not.toBeInTheDocument();
-  });
-
-  it('AMRAP: you can only add rounds or finish now', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const { user, start } = setup(amrap);
-    await start();
-    expect(screen.queryByRole('button', { name: 'Previous exercise' })).not.toBeInTheDocument();
-    tick(500);
-    await user.click(screen.getByRole('button', { name: 'Finish now' }));
-    expect(confirm).toHaveBeenCalled();
-    expect(screen.getByRole('heading', { name: 'Workout complete' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+1 round' })).toBeInTheDocument();
+    noSkippers();
   });
 });
 

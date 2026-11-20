@@ -54,11 +54,15 @@ Tapping an exercise in History's *Exercise weights* opens a single-series line c
 
 After use, the six modes and the wait-for-a-tap setting were confusing. Simplified:
 
-- **Timer** (`interval`): everything is timed and it plays through every round with no tapping, ever. Previous/Next *exercise* skip rests (Skip rest during a rest, Skip get ready during get-ready). No type or role pickers on steps.
-- **Open-ended rounds** (`flow`): untimed rounds; one tap (**Round done**) ends a round, then the rest timer, then the next round. Previous/Next are hidden on the round (they would skip the whole round); Skip rest is available during the rest.
+- **Timer** (`interval`): everything is timed and it plays through every round with no tapping, ever. No type or role pickers on steps.
+- **Open-ended rounds** (`flow`): untimed rounds; one tap (**Round done**) ends a round, then the rest timer, then the next round. This is the only tap in the app.
 - **Quick presets**: Tabata, EMOM, AMRAP. Custom remains for existing workouts (it keeps the type/role pickers) but is no longer offered for new ones.
 - **Removed**: the *wait for a tap between rounds* option (gate), the per-exercise vs per-round tap setting, and the old Skip/Back engine functions (replaced by `nextExercise`/`previousExercise`).
 - The start screen says in one line whether you will need to tap anything.
+
+## Revision 7 (2026-11-20): nothing to tap to move on
+
+Tapping to jump between exercises is removed everywhere: no Next/Previous exercise, Skip rest, Skip get ready or Finish now (Quit ends a workout and logs it). In a timed workout the only control is Pause. The per-exercise tap setting (`advance`) is gone; untimed exercises always form one round ended by **Round done**, and a legacy `advance` value in saved data is ignored. The rest of a round can still be nudged with the −15s / +15s buttons.
 
 ## Non-goals (v1)
 

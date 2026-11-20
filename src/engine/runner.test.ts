@@ -2,9 +2,7 @@ import {
   adjustSeconds,
   currentSegment,
   done,
-  nextExercise,
   pause,
-  previousExercise,
   remainingMs,
   resume,
   startRun,
@@ -166,85 +164,6 @@ describe('amrap counter', () => {
     const end = update(d2.state, T0 + s(600));
     expect(end.state.finished).toBe(true);
     expect(end.events).toEqual([{ type: 'finish' }]);
-  });
-});
-
-describe('next and previous exercise', () => {
-  // prep 0-10, A 10-50, Rest 50-70, B 70-110, Rest 110-130, C 130-170
-  const list = wk({
-    prepSeconds: 10,
-    steps: [timed('A', 40), timed('B', 40), timed('C', 40)],
-    restBetweenSteps: 20,
-    rounds: 1,
-  });
-  const at = (sec: number) => update(startRun(list, T0), T0 + s(sec)).state;
-
-  it('next exercise skips the rest and lands on the next exercise', () => {
-    const out = nextExercise(at(15), T0 + s(15));
-    expect(currentSegment(out.state).label).toBe('B');
-    expect(remainingMs(out.state, T0 + s(15))).toBe(s(40));
-    expect(out.events).toEqual([{ type: 'segment-start', segment: currentSegment(out.state) }]);
-  });
-
-  it('from a rest it goes to the next exercise too', () => {
-    const out = nextExercise(at(55), T0 + s(55));
-    expect(currentSegment(out.state).label).toBe('B');
-  });
-
-  it('from get ready it jumps straight to the first exercise', () => {
-    const out = nextExercise(at(3), T0 + s(3));
-    expect(currentSegment(out.state).label).toBe('A');
-    expect(remainingMs(out.state, T0 + s(3))).toBe(s(40));
-  });
-
-  it('on the last exercise it finishes the workout', () => {
-    const out = nextExercise(at(135), T0 + s(135));
-    expect(out.state.finished).toBe(true);
-    expect(out.events).toEqual([{ type: 'finish' }]);
-  });
-
-  it('previous exercise goes back to the previous exercise (not its rest) when you are under 2s in', () => {
-    const b = previousExercise(at(71), T0 + s(71));
-    expect(currentSegment(b).label).toBe('A');
-    expect(remainingMs(b, T0 + s(71))).toBe(s(40));
-  });
-
-  it('previous exercise restarts the current exercise when you are 2s or more in', () => {
-    const b = previousExercise(at(75), T0 + s(75));
-    expect(currentSegment(b).label).toBe('B');
-    expect(remainingMs(b, T0 + s(75))).toBe(s(40));
-  });
-
-  it('previous exercise from a rest returns to the exercise you just did', () => {
-    const b = previousExercise(at(55), T0 + s(55));
-    expect(currentSegment(b).label).toBe('A');
-    expect(remainingMs(b, T0 + s(55))).toBe(s(40));
-  });
-
-  it('previous on the first exercise or on get ready restarts it', () => {
-    const first = previousExercise(at(11), T0 + s(11));
-    expect(currentSegment(first).label).toBe('A');
-    expect(remainingMs(first, T0 + s(11))).toBe(s(40));
-    const prep = previousExercise(at(4), T0 + s(4));
-    expect(currentSegment(prep).role).toBe('prep');
-    expect(remainingMs(prep, T0 + s(4))).toBe(s(10));
-  });
-
-  it('works while paused, using the moment you paused', () => {
-    const paused = pause(at(20), T0 + s(20));
-    const out = nextExercise(paused, T0 + s(500));
-    expect(currentSegment(out.state).label).toBe('B');
-    expect(out.state.pausedAt).toBe(T0 + s(20));
-    expect(remainingMs(out.state, T0 + s(500))).toBe(s(40));
-  });
-
-  it('open-ended rounds: next from the rest starts the next round, previous in the list restarts it', () => {
-    const flow = wk({ steps: [tap('A'), tap('B')], advance: 'round', rounds: null, restBetweenRounds: 120 });
-    const rested = done(startRun(flow, T0), T0 + s(30)).state; // now in the rest
-    const next = nextExercise(rested, T0 + s(40));
-    expect(currentSegment(next.state)).toMatchObject({ role: 'work', round: 2, seconds: null });
-    const prev = previousExercise(startRun(flow, T0), T0 + s(30));
-    expect(currentSegment(prev)).toMatchObject({ role: 'work', round: 1 });
   });
 });
 

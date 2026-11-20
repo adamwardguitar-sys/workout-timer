@@ -4,7 +4,7 @@ A phone-first workout timer you can install to your home screen. Build a library
 
 ## Two modes
 
-- **Timer:** every exercise and rest is timed. It plays all the way through, every round, with no tapping at all. Set an exercise list, the time for each, a shared rest after each exercise (e.g. 40s on, 20s off), and the number of rounds (or Unlimited). Next exercise / Previous exercise move between exercises (skipping rests).
+- **Timer:** every exercise and rest is timed. It plays all the way through, every round, with no tapping at all: the only control is Pause. Set an exercise list, the time for each, a shared rest after each exercise (e.g. 40s on, 20s off), and the number of rounds (or Unlimited).
 - **Open-ended rounds:** the rounds have no times. Do each round at your own pace, tap **Round done**, then a rest timer runs and the next round starts. Rounds can be a number or until you stop. Good for kettlebell complexes.
 
 Quick presets for **Tabata** (20s on, 10s off, 8 rounds), **EMOM** (a new round every minute) and **AMRAP** (one countdown; tap +1 round each time you finish a round).

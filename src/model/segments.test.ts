@@ -67,20 +67,6 @@ describe('segmentsForRound', () => {
     expect(segmentsForRound(w, 2)).toHaveLength(1);
   });
 
-  it('flow with advance=step makes one tap segment per exercise with itemIndex', () => {
-    const w = wk({
-      steps: [tap('A'), tap('B'), tap('C')],
-      advance: 'step',
-      rounds: null,
-      restBetweenRounds: 120,
-    });
-    const segs = segmentsForRound(w, 1);
-    const taps = segs.filter((s) => s.role === 'work');
-    expect(taps.map((s) => s.itemIndex)).toEqual([0, 1, 2]);
-    expect(taps.every((s) => s.items?.length === 3 && s.seconds === null)).toBe(true);
-    expect(segs.at(-1)).toMatchObject({ role: 'rest', seconds: 120 });
-  });
-
   it('merged tap segment sits at the position of the first tap step', () => {
     const w = wk({
       steps: [tap('A'), timed('Hold', 30), tap('B')],
@@ -184,14 +170,19 @@ describe('restBetweenSteps (exercise list with a shared rest)', () => {
     ]);
   });
 
-  it('gives tap-per-exercise steps a rest, but not the merged tap-once-per-round segment', () => {
+  it('a round of tap steps is always one block: no shared rest between them, whatever a legacy advance value says', () => {
     const taps = [tap('A'), tap('B')];
-    expect(shape(segmentsForRound(wk({ steps: taps, advance: 'step', restBetweenSteps: 20, rounds: 1 }), 1))).toEqual([
-      ['A', 'work', null],
-      ['Rest', 'rest', 20],
-      ['B', 'work', null],
-    ]);
-    expect(segmentsForRound(wk({ steps: taps, advance: 'round', restBetweenSteps: 20, rounds: 1 }), 1)).toHaveLength(1);
+    for (const advance of ['step', 'round'] as const) {
+      expect(segmentsForRound(wk({ steps: taps, advance, restBetweenSteps: 20, rounds: 1 }), 1)).toHaveLength(1);
+    }
+  });
+
+  it('a legacy per-exercise setting is ignored: tap steps still become one Round segment with no per-exercise index', () => {
+    const w = wk({ steps: [tap('A'), tap('B'), tap('C')], advance: 'step', rounds: null, restBetweenRounds: 120 });
+    const segs = segmentsForRound(w, 1);
+    expect(segs.filter((x) => x.role === 'work')).toHaveLength(1);
+    expect(segs[0].items).toHaveLength(3);
+    expect(segs[0]).not.toHaveProperty('itemIndex');
   });
 
   it('is rejected by validateWorkout when negative', () => {

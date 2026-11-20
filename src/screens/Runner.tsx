@@ -11,8 +11,6 @@ import {
   pause,
   remainingMs,
   resume,
-  nextExercise,
-  previousExercise,
   startRun,
   summarize,
   undoLap,
@@ -48,7 +46,7 @@ function nextSegment(run: RunState): Segment | undefined {
 }
 
 function nextText(seg: Segment): string {
-  return seg.items && seg.itemIndex === undefined ? `Round ${seg.round}` : seg.label;
+  return seg.items ? `Round ${seg.round}` : seg.label;
 }
 
 /** One line on the start screen saying whether you will need to tap anything. */
@@ -56,7 +54,7 @@ function startHint(w: Workout): string {
   const timed = w.steps.some((s) => s.kind === 'timed');
   const taps = w.steps.some((s) => s.kind === 'tap');
   if (w.steps.some((s) => s.counter)) return 'Tap "+1 round" each time you finish a round.';
-  if (!timed) return w.advance === 'step' ? 'Tap "Done" after each exercise.' : 'Tap "Round done" at the end of each round.';
+  if (!timed) return 'Tap "Round done" at the end of each round.';
   if (taps) return 'Plays through on its own. Tap "Done" on steps that have no time.';
   return 'Plays all the way through. No tapping needed.';
 }
@@ -211,15 +209,6 @@ export function Runner({
     }
   }
 
-  function onNext() {
-    if (!allowTap()) return;
-    const cur = runRef.current;
-    if (!cur) return;
-    // moving past the last exercise ends the workout: make sure that is what was meant
-    if (nextExercise(cur, Date.now()).state.finished && !window.confirm('Finish the workout now?')) return;
-    act(nextExercise);
-  }
-
   function quit() {
     if (window.confirm('End this workout? Your progress so far is saved to your history.')) {
       const cur = runRef.current;
@@ -357,20 +346,8 @@ export function Runner({
   const ms = remainingMs(run, now);
   const next = nextSegment(run);
   const paused = run.pausedAt !== null;
-  const isTimed = seg.seconds !== null;
-  const hasTimedSteps = workout.steps.some((x) => x.kind === 'timed');
-  const canPause = isTimed;
-  // Previous/next are about exercises, so they only exist where there are timed exercises to move between
-  const showPrev = isTimed && hasTimedSteps && !seg.counter && seg.role !== 'prep';
-  const nextLabel = !isTimed
-    ? null
-    : seg.role === 'prep'
-      ? 'Skip get ready'
-      : seg.counter
-        ? 'Finish now'
-        : seg.role === 'rest'
-          ? 'Skip rest'
-          : 'Next exercise';
+  // Timed exercises run by themselves: the only control is Pause. There is nothing to tap to move on.
+  const canPause = seg.seconds !== null;
   const roundLabel =
     seg.counter || seg.round === 0 || workout.rounds === 1
       ? null
@@ -421,11 +398,7 @@ export function Runner({
         {seg.items && (
           <ol className="items">
             {seg.items.map((it, i) => (
-              <li
-                key={i}
-                aria-current={seg.itemIndex === i ? 'step' : undefined}
-                className={seg.itemIndex !== undefined && i < seg.itemIndex ? 'item done' : 'item'}
-              >
+              <li key={i} className="item">
                 {itemText(it)}
               </li>
             ))}
@@ -446,7 +419,7 @@ export function Runner({
         )}
         {seg.seconds === null && !seg.counter && (
           <button className="btn primary huge" onClick={() => allowTap() && act(done)}>
-            {seg.items && seg.itemIndex === undefined ? 'Round done' : 'Done'}
+            {seg.items ? 'Round done' : 'Done'}
           </button>
         )}
         {seg.role === 'rest' && seg.seconds !== null && (
@@ -463,33 +436,11 @@ export function Runner({
 
       {next && <div className="run-next muted">Next: {nextText(next)}</div>}
 
-      {(canPause || nextLabel) && (
+      {canPause && (
         <footer className="run-controls">
-          {showPrev ? (
-            <button
-              className="btn"
-              aria-label="Previous exercise"
-              onClick={() => allowTap() && act((r, n) => previousExercise(r, n))}
-            >
-              <Icon name="prev" />
-            </button>
-          ) : (
-            <span />
-          )}
-          {canPause ? (
-            <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
-              {paused ? 'Resume' : 'Pause'}
-            </button>
-          ) : (
-            <span />
-          )}
-          {nextLabel ? (
-            <button className="btn" aria-label={nextLabel} onClick={onNext}>
-              <Icon name="next" />
-            </button>
-          ) : (
-            <span />
-          )}
+          <button className="btn primary" onClick={() => act((r, n) => (paused ? resume(r, n) : pause(r, n)))}>
+            {paused ? 'Resume' : 'Pause'}
+          </button>
         </footer>
       )}
     </section>

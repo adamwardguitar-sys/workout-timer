@@ -18,7 +18,6 @@ function flow(name: string, steps: Step[]): Workout {
     prepSeconds: 30,
     steps,
     rounds: null,
-    advance: 'round',
     restBetweenRounds: 120,
   };
 }
@@ -90,7 +89,6 @@ function exerciseList(name: string, labels: string[], weighted: string[]): Worko
       ...(weighted.includes(label) ? { weighted: true } : {}),
     })),
     rounds: 1,
-    advance: 'step',
     restBetweenRounds: 0,
     restBetweenSteps: 20,
   };

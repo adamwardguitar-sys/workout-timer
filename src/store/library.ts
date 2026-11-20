@@ -44,7 +44,7 @@ export function isWorkout(x: unknown): x is Workout {
     Array.isArray(w.steps) &&
     w.steps.every(isStep) &&
     (w.rounds === null || typeof w.rounds === 'number') &&
-    (w.advance === 'step' || w.advance === 'round') &&
+    (w.advance === undefined || w.advance === 'step' || w.advance === 'round') &&
     typeof w.restBetweenRounds === 'number' &&
     optNum(w.restBetweenSteps)
   );

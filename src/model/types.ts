@@ -19,9 +19,10 @@ export interface Workout {
   prepSeconds: number;
   steps: Step[];
   rounds: number | null;
-  advance: 'step' | 'round';
+  /** Legacy and ignored: untimed rounds always end with a single "Round done" tap. */
+  advance?: 'step' | 'round';
   restBetweenRounds: number;
-  /** Shared rest after each exercise (timed steps, or tap steps when advance is 'step'). 0/absent = none. */
+  /** Shared rest after each exercise (timed exercises). 0/absent = none. */
   restBetweenSteps?: number;
 }
 
@@ -37,6 +38,5 @@ export interface Segment {
   seconds: number | null;
   round: number;
   items?: SegmentItem[];
-  itemIndex?: number;
   counter?: boolean;
 }

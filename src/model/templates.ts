@@ -27,7 +27,6 @@ export function templateFor(mode: Mode): Workout {
     name: NAMES[mode],
     mode,
     prepSeconds: 30,
-    advance: 'step' as const,
     restBetweenRounds: 0,
   };
   switch (mode) {
@@ -49,7 +48,6 @@ export function templateFor(mode: Mode): Workout {
         ...base,
         steps: [tap('Exercise 1'), tap('Exercise 2'), tap('Exercise 3')],
         rounds: null,
-        advance: 'round',
         restBetweenRounds: 120,
       };
     case 'custom':
