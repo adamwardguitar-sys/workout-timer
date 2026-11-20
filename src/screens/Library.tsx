@@ -19,6 +19,7 @@ import { useLibrary } from '../hooks/useLibrary';
 import { MODE_BLURBS, MODE_LABELS, formatTime } from '../model/format';
 import { validateWorkout } from '../model/segments';
 import { templateFor } from '../model/templates';
+import { loadActiveRun } from '../store/activeRun';
 import type { Mode, Workout } from '../model/types';
 import type { Navigate } from '../route';
 
@@ -83,6 +84,7 @@ function WorkoutCard({ w, index, navigate, onDuplicate, onDelete }: CardProps) {
 export function Library({ navigate }: { navigate: Navigate }) {
   const lib = useLibrary();
   const [picking, setPicking] = useState(false);
+  const [savedRun] = useState(() => loadActiveRun());
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -115,6 +117,12 @@ export function Library({ navigate }: { navigate: Navigate }) {
           <span className="sr-only">Settings</span>
         </button>
       </header>
+
+      {savedRun && (
+        <button className="btn resume wide" onClick={() => navigate({ name: 'run', id: savedRun.workout.id })}>
+          Resume workout · {savedRun.workout.name.trim() || 'Untitled'}
+        </button>
+      )}
 
       <button className="btn primary wide" onClick={() => setPicking(true)}>
         New workout

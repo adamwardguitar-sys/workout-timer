@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { Library } from './Library';
 import { loadLibrary, saveLibrary } from '../store/library';
 import { seedWorkouts } from '../store/seed';
+import { saveActiveRun } from '../store/activeRun';
+import { startRun } from '../engine/runner';
 
 beforeEach(() => {
   localStorage.clear();
@@ -108,5 +110,18 @@ describe('Library', () => {
     const after = loadLibrary().map((w) => w.name);
     expect(after[0]).toBe(before[1]);
     expect(after[1]).toBe(before[0]);
+  });
+
+  it('offers to resume a saved run', async () => {
+    const w = seedWorkouts()[1];
+    saveActiveRun(startRun(w, Date.now()));
+    const { navigate, user } = setup();
+    await user.click(screen.getByRole('button', { name: /Resume workout/ }));
+    expect(navigate).toHaveBeenCalledWith({ name: 'run', id: w.id });
+  });
+
+  it('shows no resume banner when there is no saved run', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: /Resume workout/ })).not.toBeInTheDocument();
   });
 });
