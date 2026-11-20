@@ -21,3 +21,30 @@ describe('MODE_LABELS', () => {
     expect(Object.keys(MODE_LABELS).sort()).toEqual(['amrap', 'custom', 'emom', 'flow', 'interval', 'tabata']);
   });
 });
+
+import { formatDuration, relativeDay } from './format';
+
+describe('formatDuration', () => {
+  it.each([
+    [0, '0s'],
+    [45, '45s'],
+    [60, '1 min'],
+    [600, '10 min'],
+    [3540, '59 min'],
+    [3600, '1 h 00 min'],
+    [3900, '1 h 05 min'],
+  ])('%i seconds -> %s', (sec, out) => expect(formatDuration(sec)).toBe(out));
+});
+
+describe('relativeDay', () => {
+  const at = (m: number, d: number, h = 9) => new Date(2026, m - 1, d, h, 0).getTime();
+  const NOW = at(11, 20, 12);
+  it.each([
+    [at(11, 20, 7), 'Today'],
+    [at(11, 19, 23), 'Yesterday'],
+    [at(11, 17), '3 days ago'],
+    [at(11, 13), '1 week ago'],
+    [at(11, 2), '2 weeks ago'],
+    [at(9, 1), '2 months ago'],
+  ])('%#', (ts, out) => expect(relativeDay(ts, NOW)).toBe(out));
+});
