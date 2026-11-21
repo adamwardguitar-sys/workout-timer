@@ -17,7 +17,6 @@ const wk = (over: Partial<Workout>): Workout => ({
   prepSeconds: 0,
   steps: [],
   rounds: 1,
-  advance: 'step',
   restBetweenRounds: 0,
   ...over,
 });
@@ -170,21 +169,6 @@ describe('restBetweenSteps (exercise list with a shared rest)', () => {
     ]);
   });
 
-  it('a round of tap steps is always one block: no shared rest between them, whatever a legacy advance value says', () => {
-    const taps = [tap('A'), tap('B')];
-    for (const advance of ['step', 'round'] as const) {
-      expect(segmentsForRound(wk({ steps: taps, advance, restBetweenSteps: 20, rounds: 1 }), 1)).toHaveLength(1);
-    }
-  });
-
-  it('a legacy per-exercise setting is ignored: tap steps still become one Round segment with no per-exercise index', () => {
-    const w = wk({ steps: [tap('A'), tap('B'), tap('C')], advance: 'step', rounds: null, restBetweenRounds: 120 });
-    const segs = segmentsForRound(w, 1);
-    expect(segs.filter((x) => x.role === 'work')).toHaveLength(1);
-    expect(segs[0].items).toHaveLength(3);
-    expect(segs[0]).not.toHaveProperty('itemIndex');
-  });
-
   it('is rejected by validateWorkout when negative', () => {
     expect(validateWorkout(list({ restBetweenSteps: -5 })).length).toBeGreaterThan(0);
   });
@@ -211,5 +195,103 @@ describe('estimateSeconds', () => {
   it('matches the Tabata template (20/10 x 8) and the AMRAP template', () => {
     expect(estimateSeconds({ ...templateFor('tabata'), prepSeconds: 0 })).toBe(8 * 20 + 7 * 10);
     expect(estimateSeconds({ ...templateFor('amrap'), prepSeconds: 0 })).toBe(600);
+  });
+});
+
+describe('custom times per round (roundTimes)', () => {
+  const base = (over: Partial<Workout> = {}) =>
+    wk({ steps: [timed('A', 40), timed('B', 40)], restBetweenSteps: 20, rounds: 3, ...over });
+  const shape = (segs: ReturnType<typeof segmentsForRound>) => segs.map((x) => [x.label, x.seconds]);
+
+  it('uses each round its own work and rest time', () => {
+    const w = base({ roundTimes: [{ work: 40, rest: 20 }, { work: 45, rest: 15 }, { work: 50, rest: 10 }] });
+    expect(shape(segmentsForRound(w, 1))).toEqual([['A', 40], ['Rest', 20], ['B', 40], ['Rest', 20]]);
+    expect(shape(segmentsForRound(w, 2))).toEqual([['A', 45], ['Rest', 15], ['B', 45], ['Rest', 15]]);
+    expect(shape(segmentsForRound(w, 3))).toEqual([['A', 50], ['Rest', 10], ['B', 50]]); // final round: no trailing rest
+  });
+
+  it('a work time replaces every exercise time in that round, even when exercises differ', () => {
+    const w = base({ steps: [timed('Plank', 30), timed('Squats', 50)], roundTimes: [{ work: 45 }] });
+    expect(segmentsForRound(w, 1).filter((x) => x.role === 'work').map((x) => x.seconds)).toEqual([45, 45]);
+    // a round with no entry keeps each exercise's own time
+    expect(segmentsForRound(w, 2).filter((x) => x.role === 'work').map((x) => x.seconds)).toEqual([30, 50]);
+  });
+
+  it('each field falls back on its own: no rest entry keeps the shared rest', () => {
+    const w = base({ roundTimes: [{ work: 45 }] });
+    expect(shape(segmentsForRound(w, 1))).toEqual([['A', 45], ['Rest', 20], ['B', 45], ['Rest', 20]]);
+    const w2 = base({ roundTimes: [{ rest: 5 }] });
+    expect(shape(segmentsForRound(w2, 1))).toEqual([['A', 40], ['Rest', 5], ['B', 40], ['Rest', 5]]);
+  });
+
+  it('a rest of 0 in a round removes the rests for that round', () => {
+    const w = base({ roundTimes: [{ rest: 0 }] });
+    expect(shape(segmentsForRound(w, 1))).toEqual([['A', 40], ['B', 40]]);
+  });
+
+  it('does not touch explicit rest steps or counter steps', () => {
+    const w = wk({
+      steps: [timed('A', 40), timed('Break', 15, 'rest'), { ...timed('Count', 60), counter: true }],
+      rounds: 1,
+      roundTimes: [{ work: 45 }],
+    });
+    expect(shape(segmentsForRound(w, 1))).toEqual([['A', 45], ['Break', 15], ['Count', 60]]);
+  });
+
+  it('is counted in the estimated length', () => {
+    const w = base({
+      prepSeconds: 0,
+      rounds: 2,
+      roundTimes: [{ work: 40, rest: 20 }, { work: 60, rest: 10 }],
+    });
+    // round 1: 40+20+40+20 = 120 ; round 2: 60+10+60 = 130 (final round drops the last rest)
+    expect(estimateSeconds(w)).toBe(250);
+  });
+
+  it('rejects a work time of 0 and a negative rest', () => {
+    expect(validateWorkout(base({ roundTimes: [{ work: 0 }] })).length).toBeGreaterThan(0);
+    expect(validateWorkout(base({ roundTimes: [{ rest: -1 }] })).length).toBeGreaterThan(0);
+    expect(validateWorkout(base({ roundTimes: [{ work: 40, rest: 0 }, {}] }))).toEqual([]);
+  });
+});
+
+describe('waitBetweenRounds (opt-in pause between rounds, off by default)', () => {
+  const w = (over: Partial<Workout> = {}) =>
+    wk({ steps: [timed('A', 40), timed('B', 40)], rounds: 3, waitBetweenRounds: true, ...over });
+
+  it('puts a tap-to-continue gate at the start of every round after the first', () => {
+    expect(segmentsForRound(w(), 1).some((x) => x.gate)).toBe(false);
+    const r2 = segmentsForRound(w(), 2);
+    expect(r2[0]).toMatchObject({ role: 'rest', label: 'Round 2', seconds: null, gate: true, round: 2 });
+    expect(r2).toHaveLength(3);
+    expect(segmentsForRound(w(), 3)[0]).toMatchObject({ label: 'Round 3', gate: true });
+  });
+
+  it('also applies when rounds is until-I-stop', () => {
+    expect(segmentsForRound(w({ rounds: null }), 7)[0]).toMatchObject({ label: 'Round 7', gate: true });
+  });
+
+  it('is off by default and when false', () => {
+    expect(segmentsForRound(w({ waitBetweenRounds: undefined }), 2).some((x) => x.gate)).toBe(false);
+    expect(segmentsForRound(w({ waitBetweenRounds: false }), 2).some((x) => x.gate)).toBe(false);
+  });
+});
+
+describe('advance = step (opt-in tap per exercise for untimed workouts)', () => {
+  const taps = [tap('A'), tap('B'), tap('C')];
+
+  it('makes one tap segment per exercise with its index, and a rest after each when a shared rest is set', () => {
+    const segs = segmentsForRound(wk({ steps: taps, advance: 'step', restBetweenSteps: 20, rounds: 2 }), 1);
+    expect(segs.filter((x) => x.role === 'work').map((x) => x.itemIndex)).toEqual([0, 1, 2]);
+    expect(segs.every((x) => x.role === 'rest' || x.items?.length === 3)).toBe(true);
+    expect(segs.map((x) => x.role)).toEqual(['work', 'rest', 'work', 'rest', 'work', 'rest']);
+  });
+
+  it('is the default only when asked: undefined or round gives one Round block', () => {
+    for (const advance of [undefined, 'round' as const]) {
+      const segs = segmentsForRound(wk({ steps: taps, advance, rounds: 1 }), 1);
+      expect(segs).toHaveLength(1);
+      expect(segs[0]).not.toHaveProperty('itemIndex');
+    }
   });
 });

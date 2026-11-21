@@ -30,7 +30,6 @@ const wk = (over: Partial<Workout>): Workout => ({
   prepSeconds: 0,
   steps: [],
   rounds: 1,
-  advance: 'step',
   restBetweenRounds: 0,
   ...over,
 });
@@ -321,5 +320,42 @@ describe('undoLap', () => {
     st = undoLap(st);
     expect(st.laps).toBe(1);
     expect(undoLap(undoLap(st)).laps).toBe(0);
+  });
+});
+
+describe('waiting between rounds (opt-in)', () => {
+  const gated = wk({ steps: [timed('Work', 40)], rounds: 2, waitBetweenRounds: true });
+
+  it('stops at the gate after a round, waits as long as it takes, then Done starts the next round', () => {
+    const r = startRun(gated, T0);
+    const at = update(r, T0 + s(40));
+    expect(currentSegment(at.state)).toMatchObject({ gate: true, label: 'Round 2' });
+    const later = update(at.state, T0 + s(5000));
+    expect(later.state.index).toBe(at.state.index);
+    expect(later.events).toEqual([]);
+    expect(summarize(later.state, T0 + s(5000)).roundsDone).toBe(1);
+    const go = done(later.state, T0 + s(5000));
+    expect(currentSegment(go.state)).toMatchObject({ label: 'Work', round: 2 });
+    expect(remainingMs(go.state, T0 + s(5000))).toBe(s(40));
+  });
+});
+
+describe('custom times per round in the engine', () => {
+  it('plays each round with its own times', () => {
+    const w = wk({
+      steps: [timed('A', 40)],
+      rounds: 2,
+      restBetweenRounds: 0,
+      restBetweenSteps: 20,
+      roundTimes: [{ work: 30, rest: 10 }, { work: 50 }],
+    });
+    // round 1: A30 Rest10 ; round 2: A50
+    const at = (sec: number) => update(startRun(w, T0), T0 + s(sec)).state;
+    expect(currentSegment(at(5))).toMatchObject({ label: 'A', round: 1 });
+    expect(remainingMs(at(5), T0 + s(5))).toBe(s(25));
+    expect(currentSegment(at(35))).toMatchObject({ role: 'rest', round: 1 });
+    expect(currentSegment(at(45))).toMatchObject({ label: 'A', round: 2 });
+    expect(remainingMs(at(45), T0 + s(45))).toBe(s(45));
+    expect(at(95).finished).toBe(true);
   });
 });

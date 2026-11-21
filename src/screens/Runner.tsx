@@ -47,7 +47,7 @@ function nextSegment(run: RunState): Segment | undefined {
 }
 
 function nextText(seg: Segment): string {
-  return seg.items ? `Round ${seg.round}` : seg.label;
+  return seg.items && seg.itemIndex === undefined ? `Round ${seg.round}` : seg.label;
 }
 
 function itemText(i: { label: string; reps?: number }): string {
@@ -387,7 +387,7 @@ export function Runner({
         {seg.role === 'prep' ? (
           <div className="run-label">Get ready</div>
         ) : (
-          seg.seconds !== null && <div className="run-label">{seg.label}</div>
+          (seg.seconds !== null || seg.gate) && <div className="run-label">{seg.label}</div>
         )}
         {ms !== null && (
           <div className="clock num" data-testid="clock">
@@ -399,7 +399,11 @@ export function Runner({
         {seg.items && (
           <ol className="items">
             {seg.items.map((it, i) => (
-              <li key={i} className="item">
+              <li
+                key={i}
+                aria-current={seg.itemIndex === i ? 'step' : undefined}
+                className={seg.itemIndex !== undefined && i < seg.itemIndex ? 'item done' : 'item'}
+              >
                 {itemText(it)}
               </li>
             ))}
@@ -420,7 +424,7 @@ export function Runner({
         )}
         {seg.seconds === null && !seg.counter && (
           <button className="btn primary huge" onClick={() => allowTap() && act(done)}>
-            {seg.items ? 'Round done' : 'Done'}
+            {seg.gate ? `Start round ${seg.round}` : seg.items && seg.itemIndex === undefined ? 'Round done' : 'Done'}
           </button>
         )}
         {seg.role === 'rest' && seg.seconds !== null && (

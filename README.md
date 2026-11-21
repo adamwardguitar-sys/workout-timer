@@ -7,6 +7,12 @@ A phone-first workout timer you can install to your home screen. Build a library
 - **Timer:** every exercise and rest is timed. It plays all the way through, every round, with no tapping at all. The controls are two icon buttons: Pause (Resume when paused) and an optional Skip that moves on to whatever comes next; there is no Previous. Set an exercise list, the time for each, a shared rest after each exercise (e.g. 40s on, 20s off), and the number of rounds (or Unlimited).
 - **Open-ended rounds:** the rounds have no times. Do each round at your own pace, tap **Round done**, then a rest timer runs and the next round starts. Rounds can be a number or until you stop. Good for kettlebell complexes.
 
+**Advanced** (a fold-out in the editor, everything off by default):
+- **Custom times per round:** instead of every round the same, give each round its own work and rest time (for example progressive rounds). Needs a set number of rounds.
+- **Wait for a tap between rounds:** stop at the start of each new round until you tap.
+- **Tap once per round / Tap per exercise** (open-ended rounds).
+- The per-step **Timed / Tap** and **Work / Rest** pickers.
+
 Quick presets for **Tabata** (20s on, 10s off, 8 rounds), **EMOM** (a new round every minute) and **AMRAP** (one countdown; tap +1 round each time you finish a round).
 
 Every workout has a configurable **get ready** countdown (30 seconds by default), your own work and rest steps, and a number of rounds (or "until I stop"). You can also pick the rounds, or Unlimited, on the screen you see before each workout starts. It starts with three workouts in the library: Full Body A and Full Body B (40s on, 20s off through the list) and Kettlebell Rounds (Athenian Complex).

@@ -15,21 +15,37 @@ export function segmentsForRound(w: Workout, round: number): Segment[] {
   const push = (seg: Omit<Segment, 'id' | 'round'>) =>
     segs.push({ ...seg, id: `${round}:${segs.length}`, round });
 
-  const stepRest = w.restBetweenSteps ?? 0;
-  // only timed exercises get the shared rest: a round of untimed exercises is one block
-  const paced = (s: Workout['steps'][number]) => s.role === 'work' && s.kind === 'timed';
+  // opt-in: stop between rounds until you tap
+  if (w.waitBetweenRounds && round > 1) {
+    push({ role: 'rest', label: `Round ${round}`, seconds: null, gate: true });
+  }
+
+  // opt-in custom times for this round; each field falls back on its own
+  const rt = w.roundTimes?.[round - 1];
+  const exerciseSeconds = (s: Workout['steps'][number]) =>
+    rt?.work !== undefined && s.role === 'work' && !s.counter ? rt.work : (s.seconds ?? 0);
+  const stepRest = rt?.rest ?? w.restBetweenSteps ?? 0;
+
+  const perExercise = w.advance === 'step'; // untimed workouts: tap after each exercise
+  // the shared rest follows timed exercises, and tapped exercises when they are tapped one by one
+  const paced = (s: Workout['steps'][number]) => s.role === 'work' && (s.kind === 'timed' || perExercise);
   let mergedEmitted = false;
+  let tapIndex = 0;
   for (let i = 0; i < w.steps.length; i++) {
     const s = w.steps[i];
     if (isTapWork(s)) {
-      // all untimed exercises in a round become one block, ended by a single tap
-      if (mergedEmitted) continue;
-      mergedEmitted = true;
-      push({ role: 'work', label: 'Exercises', seconds: null, items });
+      if (!perExercise) {
+        // all untimed exercises in a round become one block, ended by a single tap
+        if (mergedEmitted) continue;
+        mergedEmitted = true;
+        push({ role: 'work', label: 'Exercises', seconds: null, items });
+      } else {
+        push({ role: 'work', label: s.label, seconds: null, items, itemIndex: tapIndex++ });
+      }
     } else if (s.kind === 'tap') {
       push({ role: s.role, label: s.label, seconds: null });
     } else {
-      push({ role: s.role, label: s.label, seconds: s.seconds ?? 0, ...(s.counter ? { counter: true } : {}) });
+      push({ role: s.role, label: s.label, seconds: exerciseSeconds(s), ...(s.counter ? { counter: true } : {}) });
     }
 
     // shared rest after each exercise; the round rest takes over after the last one
@@ -59,6 +75,10 @@ export function validateWorkout(w: Workout): string[] {
   if (!Number.isFinite(w.prepSeconds) || w.prepSeconds < 0) errors.push('Get ready time cannot be negative.');
   if (w.rounds !== null && (!Number.isInteger(w.rounds) || w.rounds < 1)) {
     errors.push('Rounds must be 1 or more, or "until I stop".');
+  }
+  for (const rt of w.roundTimes ?? []) {
+    if (rt.work !== undefined && !(Number.isFinite(rt.work) && rt.work > 0)) errors.push('A round needs a work time above 0.');
+    if (rt.rest !== undefined && !(Number.isFinite(rt.rest) && rt.rest >= 0)) errors.push('A round rest cannot be negative.');
   }
   if (!Number.isFinite(w.restBetweenRounds) || w.restBetweenRounds < 0) {
     errors.push('Rest between rounds cannot be negative.');

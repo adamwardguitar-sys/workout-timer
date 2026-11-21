@@ -15,13 +15,14 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useState } from 'react';
 import { useLibrary } from '../hooks/useLibrary';
 import { Icon } from '../components/Icon';
 import { NumberField } from '../components/NumberField';
 import { MODE_LABELS } from '../model/format';
 import { newId } from '../model/id';
 import { validateWorkout } from '../model/segments';
-import type { Step, Workout } from '../model/types';
+import type { RoundTime, Step, Workout } from '../model/types';
 import type { Navigate, Route } from '../route';
 
 function TimeField(props: {
@@ -63,7 +64,7 @@ interface RowProps {
   step: Step;
   n: number;
   amrap: boolean;
-  /** Show the step type and role pickers (only the advanced Custom mode and the locked Tabata). */
+  /** Show the step type and role pickers (they live inside the Advanced fold-out). */
   advanced: boolean;
   locked: boolean;
   onChange: (s: Step) => void;
@@ -173,8 +174,117 @@ function StepRow({ step, n, amrap, advanced, locked, onChange, onRemove }: RowPr
   );
 }
 
+/** Same shape as before, with `n` rounds: extra rounds copy the last one, surplus rounds are dropped. */
+function resizeRoundTimes(rt: RoundTime[], n: number): RoundTime[] {
+  if (n <= rt.length) return rt.slice(0, n);
+  const last = rt[rt.length - 1] ?? {};
+  return [...rt, ...Array.from({ length: n - rt.length }, () => ({ ...last }))];
+}
+
+function AdvancedOptions({ w, update, locked }: { w: Workout; update: (patch: Partial<Workout>) => void; locked: boolean }) {
+  const hasTap = w.steps.some((s) => s.kind === 'tap');
+  const timedMode = (w.mode === 'interval' || w.mode === 'custom') && !locked;
+  const rounds = w.rounds ?? 0;
+  const firstWork = w.steps.find((s) => s.kind === 'timed' && s.role === 'work' && !s.counter)?.seconds ?? 40;
+  const custom = w.roundTimes !== undefined;
+
+  const setRound = (i: number, patch: RoundTime) =>
+    update({ roundTimes: (w.roundTimes ?? []).map((r, j) => (j === i ? { ...r, ...patch } : r)) });
+
+  return (
+    <div className="advanced-panel" id="advanced-panel">
+      {timedMode && (
+        <>
+          <label className="switch">
+            <input
+              type="checkbox"
+              aria-label="Custom times per round"
+              checked={custom}
+              disabled={w.rounds === null || rounds < 1}
+              onChange={(e) =>
+                update({
+                  roundTimes: e.target.checked
+                    ? Array.from({ length: rounds }, () => ({ work: firstWork, rest: w.restBetweenSteps ?? 0 }))
+                    : undefined,
+                })
+              }
+            />
+            <span className="switch-track" aria-hidden />
+            Custom times per round
+          </label>
+          {custom && (
+            <div className="round-table">
+              <div className="round-table-head">
+                <span />
+                <span className="field-label">Work</span>
+                <span className="field-label">Rest</span>
+              </div>
+              {(w.roundTimes ?? []).map((r, i) => (
+                <div className="round-row" key={i}>
+                  <span className="round-name">Round {i + 1}</span>
+                  <TimeField
+                    compact
+                    label={`Round ${i + 1} work`}
+                    seconds={r.work ?? firstWork}
+                    onChange={(work) => setRound(i, { work })}
+                  />
+                  <TimeField
+                    compact
+                    label={`Round ${i + 1} rest`}
+                    seconds={r.rest ?? w.restBetweenSteps ?? 0}
+                    onChange={(rest) => setRound(i, { rest })}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {w.mode !== 'amrap' && !locked && w.rounds !== 1 && (
+        <label className="switch">
+          <input
+            type="checkbox"
+            aria-label="Wait for a tap between rounds"
+            checked={!!w.waitBetweenRounds}
+            onChange={(e) => update({ waitBetweenRounds: e.target.checked })}
+          />
+          <span className="switch-track" aria-hidden />
+          Wait for a tap between rounds
+        </label>
+      )}
+
+      {hasTap && (
+        <fieldset className="advance">
+          <label className="check">
+            <input
+              type="radio"
+              name="advance"
+              aria-label="Tap once per round"
+              checked={w.advance !== 'step'}
+              onChange={() => update({ advance: 'round' })}
+            />
+            Tap once per round
+          </label>
+          <label className="check">
+            <input
+              type="radio"
+              name="advance"
+              aria-label="Tap per exercise"
+              checked={w.advance === 'step'}
+              onChange={() => update({ advance: 'step' })}
+            />
+            Tap per exercise
+          </label>
+        </fieldset>
+      )}
+    </div>
+  );
+}
+
 export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
   const lib = useLibrary();
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const w = lib.workouts.find((x) => x.id === id);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -196,6 +306,16 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
   const setStep = (s: Step) => update({ steps: w.steps.map((x) => (x.id === s.id ? s : x)) });
   const errors = validateWorkout(w);
   const locked = w.mode === 'tabata';
+
+  /** Keeps custom per-round times in step with the number of rounds. */
+  const changeRounds = (rounds: number | null) => {
+    const patch: Partial<Workout> = { rounds };
+    if (w.roundTimes) {
+      if (rounds === null) patch.roundTimes = undefined;
+      else if (rounds >= 1) patch.roundTimes = resizeRoundTimes(w.roundTimes, rounds);
+    }
+    update(patch);
+  };
 
   const nameFix = () => {
     if (!w.name.trim()) update({ name: 'Untitled' });
@@ -269,7 +389,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
             aria-label="Rounds"
             disabled={w.rounds === null || locked}
             value={w.rounds ?? undefined}
-            onChange={(rounds) => update({ rounds: rounds ?? 0 })}
+            onChange={(rounds) => changeRounds(rounds ?? 0)}
           />
           <label className="check">
             <input
@@ -277,12 +397,23 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
               aria-label="Until I stop"
               disabled={locked}
               checked={w.rounds === null}
-              onChange={(e) => update({ rounds: e.target.checked ? null : 3 })}
+              onChange={(e) => changeRounds(e.target.checked ? null : 3)}
             />
             Until I stop
           </label>
         </div>
       </div>
+
+      <button
+        className="advanced-toggle"
+        aria-expanded={advancedOpen}
+        aria-controls="advanced-panel"
+        onClick={() => setAdvancedOpen(!advancedOpen)}
+      >
+        Advanced
+        <Icon name="chevron" size={18} />
+      </button>
+      {advancedOpen && <AdvancedOptions w={w} update={update} locked={locked} />}
 
       <h2>Steps</h2>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -294,7 +425,7 @@ export function Editor({ id, navigate }: { id: string; navigate: Navigate }) {
                 step={s}
                 n={i + 1}
                 amrap={w.mode === 'amrap'}
-                advanced={w.mode === 'custom' || w.mode === 'tabata'}
+                advanced={advancedOpen}
                 locked={locked}
                 onChange={setStep}
                 onRemove={() => update({ steps: w.steps.filter((x) => x.id !== s.id) })}

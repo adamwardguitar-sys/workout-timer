@@ -194,6 +194,26 @@ describe('weight tracking on the starter workouts', () => {
   });
 });
 
+describe('advanced timing options storage', () => {
+  it.each([
+    ['waitBetweenRounds', 'yes'],
+    ['roundTimes', 'nope'],
+    ['roundTimes', [{ work: 'long' }]],
+    ['roundTimes', [5]],
+  ])('a bad %s value makes the workout unreadable', (key, value) => {
+    const bad = { ...seedWorkouts()[0], [key]: value };
+    const st = memStorage({ [LIBRARY_KEY]: JSON.stringify([bad]) });
+    expect(loadLibrary(st)).toHaveLength(3);
+    expect(listCorrupt(st)).toHaveLength(1);
+  });
+
+  it('good values are kept', () => {
+    const good = { ...seedWorkouts()[0], waitBetweenRounds: true, roundTimes: [{ work: 40, rest: 20 }, {}], advance: 'step' as const };
+    const st = memStorage({ [LIBRARY_KEY]: JSON.stringify([good]), [MIGRATIONS_KEY]: '["prep-30","weights-1"]' });
+    expect(loadLibrary(st)[0]).toMatchObject({ waitBetweenRounds: true, roundTimes: [{ work: 40, rest: 20 }, {}], advance: 'step' });
+  });
+});
+
 describe('restBetweenSteps storage', () => {
   it('a workout with a non-numeric restBetweenSteps is treated as unreadable', () => {
     const bad = { ...seedWorkouts()[0], restBetweenSteps: 'lots' };

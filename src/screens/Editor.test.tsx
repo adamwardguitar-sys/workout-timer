@@ -18,6 +18,9 @@ function setup(w: Workout) {
   return { navigate, user: userEvent.setup(), saved: () => loadLibrary().find((x) => x.id === w.id)! };
 }
 
+const openAdvanced = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole('button', { name: 'Advanced' }));
+
 const num = (label: string, value: number) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value: String(value) } });
 
@@ -80,6 +83,7 @@ describe('Editor steps', () => {
 
   it('changing a step to Tap hides its time and shows reps', async () => {
     const { user, saved } = setup(templateFor('custom'));
+    await openAdvanced(user);
     expect(screen.getByLabelText('Step 1 time seconds')).toBeInTheDocument();
     expect(screen.queryByLabelText('Step 1 reps')).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Step 1 type'), 'tap');
@@ -90,6 +94,7 @@ describe('Editor steps', () => {
 
   it('changes a step between work and rest', async () => {
     const { user, saved } = setup(templateFor('custom'));
+    await openAdvanced(user);
     await user.selectOptions(screen.getByLabelText('Step 1 role'), 'rest');
     expect(saved().steps[0].role).toBe('rest');
   });
@@ -211,43 +216,141 @@ describe('Editor number fields', () => {
   });
 });
 
-describe('Editor keeps the two modes simple', () => {
-  it('Timer steps are just a name and a time: no type or role pickers', () => {
+describe('Editor Advanced fold-out', () => {
+  const ALL = [
+    'Custom times per round',
+    'Wait for a tap between rounds',
+    'Tap per exercise',
+    'Tap once per round',
+    'Step 1 type',
+    'Step 1 role',
+  ];
+
+  it('is folded away by default, with every advanced option hidden', () => {
     setup(templateFor('interval'));
-    expect(screen.getByLabelText('Step 1 name')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-expanded', 'false');
+    for (const l of ALL) expect(screen.queryByLabelText(l)).not.toBeInTheDocument();
     expect(screen.getByLabelText('Step 1 time seconds')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Step 1 type')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Step 1 role')).not.toBeInTheDocument();
   });
 
-  it('Open-ended rounds steps are a name and reps: no time and no pickers', () => {
-    setup(seedWorkouts()[2]);
-    expect(screen.getByLabelText('Step 1 reps')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Step 1 time seconds')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Step 1 type')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Step 1 role')).not.toBeInTheDocument();
+  it('opens and closes again', async () => {
+    const { user } = setup(templateFor('interval'));
+    await openAdvanced(user);
+    expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText('Custom times per round')).toBeInTheDocument();
+    await openAdvanced(user);
+    expect(screen.queryByLabelText('Custom times per round')).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['Timer', () => templateFor('interval')],
-    ['Open-ended rounds', () => seedWorkouts()[2]],
-  ])('%s has no tap-behaviour or wait-for-a-tap settings', (_name, make) => {
-    setup(make());
-    expect(screen.queryByLabelText('Tap per exercise')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Tap once per round')).not.toBeInTheDocument();
+  it('Timer: custom times per round, wait for a tap, and the step type/role pickers are all off by default', async () => {
+    const { user, saved } = setup(templateFor('interval'));
+    await openAdvanced(user);
+    expect(screen.getByLabelText('Custom times per round')).not.toBeChecked();
+    expect(screen.getByLabelText('Wait for a tap between rounds')).not.toBeChecked();
+    expect(screen.getByLabelText('Step 1 type')).toHaveValue('timed');
+    expect(screen.getByLabelText('Step 1 role')).toHaveValue('work');
+    expect(screen.queryByLabelText('Tap per exercise')).not.toBeInTheDocument(); // no untimed steps
+    expect(saved().waitBetweenRounds).toBeFalsy();
+    expect(saved().roundTimes).toBeUndefined();
+  });
+
+  it('wait for a tap between rounds can be switched on and off', async () => {
+    const { user, saved } = setup(templateFor('interval'));
+    await openAdvanced(user);
+    await user.click(screen.getByLabelText('Wait for a tap between rounds'));
+    expect(saved().waitBetweenRounds).toBe(true);
+    await user.click(screen.getByLabelText('Wait for a tap between rounds'));
+    expect(saved().waitBetweenRounds).toBe(false);
+  });
+
+  it('Open-ended rounds: tap once per round is the default, and tap per exercise can be chosen', async () => {
+    const { user, saved } = setup(seedWorkouts()[2]);
+    await openAdvanced(user);
+    expect(screen.getByLabelText('Tap once per round')).toBeChecked();
+    await user.click(screen.getByLabelText('Tap per exercise'));
+    expect(saved().advance).toBe('step');
+    await user.click(screen.getByLabelText('Tap once per round'));
+    expect(saved().advance).toBe('round');
+    expect(screen.queryByLabelText('Custom times per round')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Wait for a tap between rounds')).toBeInTheDocument();
+  });
+
+  it('the wait option is hidden for a single round, Tabata and AMRAP', async () => {
+    const one = setup({ ...templateFor('interval'), rounds: 1 });
+    await openAdvanced(one.user);
     expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
   });
 
-  it('Open-ended rounds has a rest between rounds (the timer that runs after each round) and until-I-stop', () => {
-    setup(seedWorkouts()[2]);
-    expect(screen.getByLabelText('Rest between rounds seconds')).toBeInTheDocument();
-    expect(screen.getByLabelText('Until I stop')).toBeChecked();
+  it.each([['Tabata', 'tabata'], ['AMRAP', 'amrap']] as const)('%s has no wait or custom-round options', async (_n, mode) => {
+    const { user } = setup(templateFor(mode));
+    await openAdvanced(user);
+    expect(screen.queryByLabelText('Wait for a tap between rounds')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Custom times per round')).not.toBeInTheDocument();
   });
 
-  it('the advanced Custom mode keeps the type and role pickers', () => {
-    setup(templateFor('custom'));
-    expect(screen.getByLabelText('Step 1 type')).toBeInTheDocument();
-    expect(screen.getByLabelText('Step 1 role')).toBeInTheDocument();
+  it('custom times per round: switching it on gives one row per round with the current times', async () => {
+    const { user, saved } = setup(templateFor('interval')); // 3 rounds, 40s exercises, 20s rest
+    await openAdvanced(user);
+    await user.click(screen.getByLabelText('Custom times per round'));
+    expect(saved().roundTimes).toEqual([
+      { work: 40, rest: 20 },
+      { work: 40, rest: 20 },
+      { work: 40, rest: 20 },
+    ]);
+    for (const n of [1, 2, 3]) {
+      expect(screen.getByLabelText(`Round ${n} work seconds`)).toBeInTheDocument();
+      expect(screen.getByLabelText(`Round ${n} rest seconds`)).toBeInTheDocument();
+    }
+    expect(screen.queryByLabelText('Round 4 work seconds')).not.toBeInTheDocument();
+  });
+
+  it('editing a round saves just that round', async () => {
+    const { user, saved } = setup(templateFor('interval'));
+    await openAdvanced(user);
+    await user.click(screen.getByLabelText('Custom times per round'));
+    num('Round 2 work seconds', 45);
+    num('Round 2 rest seconds', 15);
+    expect(saved().roundTimes?.[1]).toEqual({ work: 45, rest: 15 });
+    expect(saved().roundTimes?.[0]).toEqual({ work: 40, rest: 20 });
+  });
+
+  it('changing the number of rounds resizes the rows, copying the last round', async () => {
+    const { user, saved } = setup(templateFor('interval'));
+    await openAdvanced(user);
+    await user.click(screen.getByLabelText('Custom times per round'));
+    num('Round 3 work seconds', 50);
+    num('Rounds', 5);
+    expect(saved().roundTimes).toHaveLength(5);
+    expect(saved().roundTimes?.[4]).toEqual({ work: 50, rest: 20 });
+    num('Rounds', 2);
+    expect(saved().roundTimes).toHaveLength(2);
+    expect(screen.queryByLabelText('Round 3 work seconds')).not.toBeInTheDocument();
+  });
+
+  it('switching it off goes back to every round the same', async () => {
+    const { user, saved } = setup(templateFor('interval'));
+    await openAdvanced(user);
+    await user.click(screen.getByLabelText('Custom times per round'));
+    await user.click(screen.getByLabelText('Custom times per round'));
+    expect(saved().roundTimes).toBeUndefined();
+    expect(screen.queryByLabelText('Round 1 work seconds')).not.toBeInTheDocument();
+  });
+
+  it('is unavailable for until-I-stop, and choosing until-I-stop switches it off', async () => {
+    const { user, saved } = setup(templateFor('interval'));
+    await openAdvanced(user);
+    await user.click(screen.getByLabelText('Custom times per round'));
+    await user.click(screen.getByLabelText('Until I stop'));
+    expect(saved().rounds).toBeNull();
+    expect(saved().roundTimes).toBeUndefined();
+    expect(screen.getByLabelText('Custom times per round')).toBeDisabled();
+  });
+
+  it('the step type and role pickers appear inside Advanced and are the old Timed/Tap and Work/Rest choices', async () => {
+    const { user, saved } = setup(templateFor('custom'));
+    await openAdvanced(user);
+    await user.selectOptions(screen.getByLabelText('Step 1 type'), 'tap');
+    expect(saved().steps[0].kind).toBe('tap');
   });
 });
 
@@ -266,8 +369,9 @@ describe('Editor rest after each exercise', () => {
 });
 
 describe('Editor Tabata lock', () => {
-  it('locks times, rounds and the step list, but not the name or get-ready', () => {
-    setup(templateFor('tabata'));
+  it('locks times, rounds and the step list, but not the name or get-ready', async () => {
+    const { user } = setup(templateFor('tabata'));
+    await openAdvanced(user);
     expect(screen.getByLabelText('Step 1 time seconds')).toBeDisabled();
     expect(screen.getByLabelText('Step 2 time seconds')).toBeDisabled();
     expect(screen.getByLabelText('Rounds')).toBeDisabled();

@@ -46,7 +46,13 @@ export function isWorkout(x: unknown): x is Workout {
     (w.rounds === null || typeof w.rounds === 'number') &&
     (w.advance === undefined || w.advance === 'step' || w.advance === 'round') &&
     typeof w.restBetweenRounds === 'number' &&
-    optNum(w.restBetweenSteps)
+    optNum(w.restBetweenSteps) &&
+    (w.waitBetweenRounds === undefined || typeof w.waitBetweenRounds === 'boolean') &&
+    (w.roundTimes === undefined ||
+      (Array.isArray(w.roundTimes) &&
+        w.roundTimes.every(
+          (r) => typeof r === 'object' && r !== null && optNum((r as { work?: unknown }).work) && optNum((r as { rest?: unknown }).rest),
+        )))
   );
 }
 

@@ -72,6 +72,15 @@ Next/Previous stayed removed, but a single optional **Skip** sits beside Pause o
 
 The interface carries labels, controls and data only, never instructions or hints: no weekly summary sentence on home (the week strip shows it), no mode descriptions in the new-workout sheet, no hints on the start screen, no empty-state sentences, no helper lines in Settings, no "show trend" captions (expandable rows use a chevron), and the finish note box is just labelled Note. Functional status (Next:, Paused, Last done, Saved to history, errors) stays.
 
+## Revision 10 (2026-11-21): Advanced fold-out and custom times per round
+
+The editor gets one **Advanced** fold-out (collapsed by default) that holds everything optional, all off by default so the normal experience stays tap-free:
+
+- **Custom times per round** (Timer and Custom modes, fixed number of rounds only): `roundTimes[round - 1] = { work?, rest? }`. `work` replaces every timed exercise's time in that round (not explicit rest steps or counters); `rest` replaces the shared rest after each exercise; each field falls back on its own. Turning it on creates a row per round from the current times; changing the number of rounds resizes the rows (extra rounds copy the last); Until I stop switches it off. Estimates and the runner use it.
+- **Wait for a tap between rounds** (`waitBetweenRounds`, restored): a tap-to-continue gate at the start of each round after the first. Hidden for one round, Tabata and AMRAP.
+- **Tap once per round / Tap per exercise** (`advance`, restored): for untimed workouts; once per round is the default.
+- **Step type and role pickers** (Timed/Tap, Work/Rest) per step.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.
