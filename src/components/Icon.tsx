@@ -29,6 +29,12 @@ const PATHS = {
   close: <path d="M6 6l12 12M18 6L6 18" />,
   plus: <path d="M12 5v14M5 12h14" />,
   chevron: <path d="M6 9l6 6 6-6" />,
+  run: (
+    <>
+      <circle cx="15" cy="4.5" r="2" />
+      <path d="M13 8.5l-3 5 4 3-1 5M10 13.5l-2 4-4 1M13 8.5l4 2 3-1M13 8.5L9 9.5l-2 3" />
+    </>
+  ),
   grip: (
     <>
       <circle cx="9" cy="6" r="1.2" fill="currentColor" />

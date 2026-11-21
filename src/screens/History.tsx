@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
+import { NumberField } from '../components/NumberField';
 import { WeightChart } from '../components/WeightChart';
 import { WeightFields } from '../components/WeightFields';
 import { useHistory } from '../hooks/useHistory';
@@ -10,11 +11,14 @@ import { activityGrid, exerciseProgress, groupByDay, thisWeek } from '../store/s
 
 const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-const level = (seconds: number) => (seconds === 0 ? 0 : seconds < 600 ? 1 : seconds < 1800 ? 2 : 3);
+/** Shade by minutes; a day with any session is at least level 1, even if no time was logged. */
+const level = (seconds: number, count: number) =>
+  count === 0 ? 0 : seconds < 600 ? 1 : seconds < 1800 ? 2 : 3;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function detail(s: Session): string {
-  const parts = [formatDuration(s.durationSec)];
+  const parts: string[] = [];
+  if (!s.manual || s.durationSec > 0) parts.push(formatDuration(s.durationSec));
   if (s.laps > 0) parts.push(plural(s.laps, 'round'));
   else if (s.roundsDone > 0) parts.push(plural(s.roundsDone, 'round'));
   parts.push(new Date(s.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
@@ -29,16 +33,19 @@ interface CardProps {
   defaultUnit: WeightUnit;
   onNote: (text: string) => void;
   onWeights: (list: ExerciseWeight[], unit: WeightUnit) => void;
+  onDuration: (seconds: number) => void;
   onDelete: () => void;
 }
 
-function SessionCard({ s, defaultUnit, onNote, onWeights, onDelete }: CardProps) {
+function SessionCard({ s, defaultUnit, onNote, onWeights, onDuration, onDelete }: CardProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(s.note ?? '');
   const [editingWeights, setEditingWeights] = useState(false);
   const unit: WeightUnit = s.weights?.length ? (s.unit ?? 'kg') : defaultUnit;
   const [wDraft, setWDraft] = useState<Record<string, number | undefined>>(() => toRecord(s.weights));
   const canWeigh = (s.tracked?.length ?? 0) > 0;
+  const [editingTime, setEditingTime] = useState(false);
+  const [minutes, setMinutes] = useState<number | undefined>(s.durationSec > 0 ? Math.round(s.durationSec / 60) : undefined);
 
   function saveWeights() {
     const list = (s.tracked ?? []).filter((ex) => wDraft[ex] !== undefined).map((ex) => ({ exercise: ex, value: wDraft[ex]! }));
@@ -53,6 +60,35 @@ function SessionCard({ s, defaultUnit, onNote, onWeights, onDelete }: CardProps)
         {!s.completed && <span className="badge early">Ended early</span>}
       </div>
       <div className="muted">{detail(s)}</div>
+
+      {editingTime && (
+        <div className="note-edit">
+          <div className="minutes-row">
+            <NumberField min={0} allowEmpty aria-label="Minutes" value={minutes} onChange={setMinutes} />
+            <span className="muted">min</span>
+          </div>
+          <div className="notice-actions">
+            <button
+              className="btn primary"
+              onClick={() => {
+                onDuration((minutes ?? 0) * 60);
+                setEditingTime(false);
+              }}
+            >
+              Save
+            </button>
+            <button
+              className="btn ghost"
+              onClick={() => {
+                setMinutes(s.durationSec > 0 ? Math.round(s.durationSec / 60) : undefined);
+                setEditingTime(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {s.weights && s.weights.length > 0 && !editingWeights && (
         <p className="session-weights">{s.weights.map((w) => `${w.exercise} ${w.value} ${s.unit ?? 'kg'}`).join(' · ')}</p>
@@ -110,8 +146,13 @@ function SessionCard({ s, defaultUnit, onNote, onWeights, onDelete }: CardProps)
       ) : (
         <>
           {s.note && <p className="session-note">{s.note}</p>}
-          {!editingWeights && (
+          {!editingWeights && !editingTime && (
             <div className="session-actions">
+              {s.manual && (
+                <button className="btn ghost small" onClick={() => setEditingTime(true)}>
+                  {s.durationSec > 0 ? 'Edit time' : 'Add time'}
+                </button>
+              )}
               {canWeigh && (
                 <button className="btn ghost small" onClick={() => setEditingWeights(true)}>
                   {s.weights?.length ? 'Edit weights' : 'Add weights'}
@@ -181,7 +222,7 @@ export function History({ now = Date.now() }: { now?: number }) {
           <button
             key={c.date}
             className={`cell${c.future ? ' future' : ''}${day === c.date ? ' selected' : ''}`}
-            data-level={level(c.seconds)}
+            data-level={level(c.seconds, c.count)}
             disabled={c.future || c.count === 0}
             aria-pressed={day === c.date}
             onClick={() => setDay(day === c.date ? null : c.date)}
@@ -253,6 +294,7 @@ export function History({ now = Date.now() }: { now?: number }) {
                 defaultUnit={defaultUnit}
                 onNote={(t) => h.note(s.id, t)}
                 onWeights={(list, unit) => h.weights(s.id, list, unit)}
+                onDuration={(secs) => h.duration(s.id, secs)}
                 onDelete={() => remove(s)}
               />
             ))}

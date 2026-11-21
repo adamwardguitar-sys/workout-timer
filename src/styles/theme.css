@@ -355,3 +355,8 @@ button.progress-row[aria-expanded='true'] .chev { transform: rotate(180deg); }
 .round-name { color: var(--text-dim); font-size: 0.9rem; }
 .round-row .time-field.compact { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
 .round-row .time-field.compact input[type='number'] { width: 3.1rem; padding: 0 4px; }
+
+/* ---- quick log run ---- */
+.log-run { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 16px; }
+.log-status { display: inline-flex; align-items: center; gap: 4px; padding-left: 12px; color: var(--accent); font-weight: 700; }
+.minutes-row { display: flex; align-items: center; gap: 8px; }

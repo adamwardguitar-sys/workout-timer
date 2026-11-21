@@ -1,4 +1,5 @@
 import { summarize, type RunState } from '../engine/runner';
+import { newId } from '../model/id';
 import type { Mode, Workout } from '../model/types';
 
 export type WeightUnit = 'kg' | 'lb';
@@ -21,6 +22,8 @@ export interface Session {
   /** True only if the workout ran to its end; false means you stopped it early. */
   completed: boolean;
   note?: string;
+  /** Logged by hand (e.g. a run) rather than recorded by the timer. */
+  manual?: boolean;
   /** Exercises that could be weighed in this workout (those with Track weight ticked). */
   tracked?: string[];
   weights?: ExerciseWeight[];
@@ -50,6 +53,7 @@ export function isSession(x: unknown): x is Session {
     typeof s.laps === 'number' &&
     typeof s.completed === 'boolean' &&
     (s.note === undefined || typeof s.note === 'string') &&
+    (s.manual === undefined || typeof s.manual === 'boolean') &&
     (s.tracked === undefined || (Array.isArray(s.tracked) && s.tracked.every((t) => typeof t === 'string'))) &&
     (s.unit === undefined || s.unit === 'kg' || s.unit === 'lb') &&
     (s.weights === undefined ||
@@ -163,6 +167,29 @@ export function setWeights(
     void _u;
     return clean.length > 0 ? { ...rest, weights: clean, unit } : rest;
   });
+  saveHistory(next, storage);
+  return next;
+}
+
+/** A run logged with one tap: today's date, no time yet (it can be added in History). */
+export function makeManualRun(now: number): Session {
+  return {
+    id: `run-${newId()}`,
+    workoutId: 'run',
+    workoutName: 'Run',
+    mode: 'custom',
+    startedAt: now,
+    durationSec: 0,
+    roundsDone: 0,
+    laps: 0,
+    completed: true,
+    manual: true,
+  };
+}
+
+export function setDuration(id: string, seconds: number, storage: Storage | undefined = defaultStorage()): Session[] {
+  const secs = Math.max(0, Math.round(seconds));
+  const next = loadHistory(storage).map((s) => (s.id === id ? { ...s, durationSec: secs } : s));
   saveHistory(next, storage);
   return next;
 }

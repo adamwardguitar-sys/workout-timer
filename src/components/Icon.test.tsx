@@ -14,6 +14,10 @@ describe('Icon', () => {
     }
   });
 
+  it('has a running figure for logging runs', () => {
+    expect(ICON_NAMES).toContain('run');
+  });
+
   it('can be sized', () => {
     const { container } = render(<Icon name="play" size={40} />);
     expect(container.querySelector('svg')).toHaveAttribute('width', '40');

@@ -81,6 +81,10 @@ The editor gets one **Advanced** fold-out (collapsed by default) that holds ever
 - **Tap once per round / Tap per exercise** (`advance`, restored): for untimed workouts; once per round is the default.
 - **Step type and role pickers** (Timed/Tap, Work/Rest) per step.
 
+## Revision 11 (2026-11-21): one-tap Log run
+
+A **Log run** button on the home screen (under the week strip) logs a manual session for today in one tap: `{ workoutId: 'run', workoutName: 'Run', mode: 'custom', durationSec: 0, completed: true, manual: true }`. A "Run logged · Undo" confirmation shows for 8 seconds; double taps within 1.5 s log once; more than one run a day is allowed. It counts in the week strip, tiles and activity grid (a day with any session is always lit), and in History the run can have a time (minutes) added or edited, plus a note, like any session. Backups include it.
+
 ## Non-goals (v1)
 
 - Accounts, cloud sync, sharing between users.

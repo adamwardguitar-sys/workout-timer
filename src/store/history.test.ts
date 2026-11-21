@@ -4,7 +4,9 @@ import {
   addSession,
   importSessions,
   loadHistory,
+  makeManualRun,
   removeSession,
+  setDuration,
   saveHistory,
   setNote,
   setWeights,
@@ -158,5 +160,41 @@ describe('weight tracking from a run', () => {
     expect(sessionFromRun(startRun(w, 0), 1000).tracked).toEqual(['Goblet Squat', 'Bicep Curls']);
     const none = { ...w, steps: w.steps.map((x) => ({ ...x, weighted: false })) };
     expect(sessionFromRun(startRun(none, 0), 1000).tracked).toBeUndefined();
+  });
+});
+
+describe('manual run log', () => {
+  it('makeManualRun makes a completed session for the moment given, named Run, with no time yet', () => {
+    const now = new Date(2026, 10, 21, 7, 30).getTime();
+    const r = makeManualRun(now);
+    expect(r).toMatchObject({
+      workoutId: 'run',
+      workoutName: 'Run',
+      mode: 'custom',
+      startedAt: now,
+      durationSec: 0,
+      roundsDone: 0,
+      laps: 0,
+      completed: true,
+      manual: true,
+    });
+    expect(makeManualRun(now).id).not.toBe(r.id);
+  });
+
+  it('a manual run round trips through storage and accepts only a boolean manual flag', () => {
+    const st = memStorage();
+    const r = makeManualRun(1_000);
+    saveHistory([r], st);
+    expect(loadHistory(st)).toEqual([r]);
+    const bad = { ...r, manual: 'yes' };
+    expect(loadHistory(memStorage({ [HISTORY_KEY]: JSON.stringify([bad]) }))).toEqual([]);
+  });
+
+  it('setDuration sets the time in whole seconds and never goes negative', () => {
+    const st = memStorage();
+    const r = makeManualRun(1_000);
+    saveHistory([r], st);
+    expect(setDuration(r.id, 1830.6, st)[0].durationSec).toBe(1831);
+    expect(setDuration(r.id, -5, st)[0].durationSec).toBe(0);
   });
 });

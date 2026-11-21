@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Icon, MODE_ICONS } from '../components/Icon';
+import { useHistory } from '../hooks/useHistory';
 import { useLibrary } from '../hooks/useLibrary';
 import { MODE_LABELS, dateLabel, formatDuration, formatTime, relativeDay } from '../model/format';
 import { estimateSeconds, validateWorkout } from '../model/segments';
@@ -23,7 +24,7 @@ import { templateFor } from '../model/templates';
 import type { Mode, Workout } from '../model/types';
 import type { Navigate } from '../route';
 import { loadActiveRun } from '../store/activeRun';
-import { loadHistory } from '../store/history';
+import { makeManualRun } from '../store/history';
 import { clearCorrupt, listCorrupt } from '../store/library';
 import { activityGrid, dayKey, workoutStats } from '../store/stats';
 import { saveTextFile } from '../util/download';
@@ -132,7 +133,15 @@ export function Library({ navigate }: { navigate: Navigate }) {
   const [picking, setPicking] = useState(false);
   const [savedRun] = useState(() => loadActiveRun());
   const [corrupt, setCorrupt] = useState(() => listCorrupt());
-  const [sessions] = useState(() => loadHistory());
+  const hist = useHistory();
+  const sessions = hist.sessions;
+  const [loggedRun, setLoggedRun] = useState<string | null>(null);
+  const lastLog = useRef(0);
+  useEffect(() => {
+    if (!loggedRun) return;
+    const t = setTimeout(() => setLoggedRun(null), 8_000);
+    return () => clearTimeout(t);
+  }, [loggedRun]);
   const stats = workoutStats(sessions);
   const now = Date.now();
   const weekCells = activityGrid(sessions, now, 1);
@@ -148,6 +157,20 @@ export function Library({ navigate }: { navigate: Navigate }) {
     const bestAt = best ? (stats.get(best.id)?.lastAt ?? 0) : -1;
     return at > bestAt ? w : best;
   }, undefined);
+
+  function logRun() {
+    const t = Date.now();
+    if (t - lastLog.current < 1_500) return; // a double tap is one run
+    lastLog.current = t;
+    const run = makeManualRun(t);
+    hist.add(run);
+    setLoggedRun(run.id);
+  }
+
+  function undoRun() {
+    if (loggedRun) hist.remove(loggedRun);
+    setLoggedRun(null);
+  }
 
   function onDragEnd(e: DragEndEvent) {
     if (!e.over || e.active.id === e.over.id) return;
@@ -213,6 +236,21 @@ export function Library({ navigate }: { navigate: Navigate }) {
             </div>
           );
         })}
+      </div>
+
+      <div className="log-run">
+        <button className="btn" onClick={logRun}>
+          <Icon name="run" size={20} />
+          Log run
+        </button>
+        {loggedRun && (
+          <div className="log-status" role="status">
+            <span>Run logged</span>
+            <button className="btn ghost small" onClick={undoRun}>
+              Undo
+            </button>
+          </div>
+        )}
       </div>
 
       {savedRun ? (

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { History } from './History';
-import { loadHistory, saveHistory, type Session } from '../store/history';
+import { loadHistory, makeManualRun, saveHistory, type Session } from '../store/history';
 import { saveSettings, DEFAULT_SETTINGS } from '../store/settings';
 
 const at = (m: number, d: number, h = 9) => new Date(2026, m - 1, d, h, 0).getTime();
@@ -218,5 +218,68 @@ describe('History expandable rows use an icon, not words', () => {
     const row = screen.getByRole('button', { name: /Goblet Squat/ });
     expect(row.querySelector('svg')).not.toBeNull();
     expect(row.textContent).not.toMatch(/trend/i);
+  });
+});
+
+describe('History activity grid shows every logged day', () => {
+  it('a day with only a run that has no time yet is still lit', () => {
+    saveHistory([{ ...makeManualRun(at(11, 20, 7)), id: 'r1' }]);
+    render(<History now={NOW} />);
+    const cell = screen.getByRole('button', { name: /^Fri 20 Nov: 1 session/ });
+    expect(cell).toHaveAttribute('data-level', '1');
+    expect(screen.getByRole('button', { name: 'Thu 19 Nov: no sessions' })).toHaveAttribute('data-level', '0');
+  });
+});
+
+describe('History manual runs', () => {
+  const runAt = (id: string, startedAt: number) => ({ ...makeManualRun(startedAt), id });
+
+  it('shows a logged run as Run, with no rounds or time until you add one', () => {
+    saveHistory([runAt('r1', at(11, 20, 7))]);
+    render(<History now={NOW} />);
+    const card = screen.getAllByRole('article')[0];
+    expect(within(card).getByText('Run')).toBeInTheDocument();
+    expect(card.textContent).not.toMatch(/round/);
+    expect(card.textContent).not.toMatch(/0s/);
+    expect(within(card).getByRole('button', { name: 'Add time' })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Add weights' })).not.toBeInTheDocument();
+  });
+
+  it('counts towards the week and total', () => {
+    saveHistory([runAt('r1', at(11, 20, 7)), runAt('r2', at(11, 18, 7))]);
+    render(<History now={NOW} />);
+    expect(screen.getByTestId('tile-week')).toHaveTextContent('2');
+    expect(screen.getByTestId('tile-total')).toHaveTextContent('2');
+  });
+
+  it('adds how long it took, in minutes, and shows it', async () => {
+    saveHistory([runAt('r1', at(11, 20, 7))]);
+    const user = userEvent.setup();
+    render(<History now={NOW} />);
+    const card = () => screen.getAllByRole('article')[0];
+    await user.click(within(card()).getByRole('button', { name: 'Add time' }));
+    await user.type(within(card()).getByLabelText('Minutes'), '32');
+    await user.click(within(card()).getByRole('button', { name: 'Save' }));
+    expect(loadHistory()[0].durationSec).toBe(32 * 60);
+    expect(card().textContent).toMatch(/32 min/);
+    expect(within(card()).getByRole('button', { name: 'Edit time' })).toBeInTheDocument();
+    expect(screen.getByTestId('tile-week')).toHaveTextContent('32 min');
+  });
+
+  it('cancelling the time edit changes nothing', async () => {
+    saveHistory([runAt('r1', at(11, 20, 7))]);
+    const user = userEvent.setup();
+    render(<History now={NOW} />);
+    const card = () => screen.getAllByRole('article')[0];
+    await user.click(within(card()).getByRole('button', { name: 'Add time' }));
+    await user.type(within(card()).getByLabelText('Minutes'), '5');
+    await user.click(within(card()).getByRole('button', { name: 'Cancel' }));
+    expect(loadHistory()[0].durationSec).toBe(0);
+  });
+
+  it('a timed workout session has no Add time button', () => {
+    saveHistory([sess('a', at(11, 20, 8))]);
+    render(<History now={NOW} />);
+    expect(screen.queryByRole('button', { name: /time$/ })).not.toBeInTheDocument();
   });
 });

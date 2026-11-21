@@ -1,10 +1,10 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Library } from './Library';
 import { LIBRARY_KEY, listCorrupt, loadLibrary, saveLibrary } from '../store/library';
 import { seedWorkouts } from '../store/seed';
 import { saveActiveRun } from '../store/activeRun';
-import { addSession } from '../store/history';
+import { addSession, loadHistory } from '../store/history';
 import { startRun } from '../engine/runner';
 
 beforeEach(() => {
@@ -295,5 +295,79 @@ describe('Library', () => {
       const hero = screen.getByRole('region', { name: 'Up next' });
       expect(within(hero).getByRole('button', { name: /Resume workout/ })).toBeInTheDocument();
     });
+  });
+});
+
+describe('Log run', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
+  const setupRun = () => {
+    const navigate = vi.fn();
+    const utils = render(<Library navigate={navigate} />);
+    return { navigate, ...utils, user: userEvent.setup() };
+  };
+
+  it('is a button on the home screen with an icon', () => {
+    setupRun();
+    const btn = screen.getByRole('button', { name: 'Log run' });
+    expect(btn.querySelector('svg')).not.toBeNull();
+  });
+
+  it('one tap logs a run for today and lights up today in the week strip', async () => {
+    const { user } = setupRun();
+    const todayDot = () => {
+      const days = within(screen.getByLabelText('This week')).getAllByRole('img');
+      return days.find((d) => /\(today\)/.test(d.getAttribute('aria-label') ?? ''))!;
+    };
+    expect(todayDot().getAttribute('aria-label')).toMatch(/no session/);
+    await user.click(screen.getByRole('button', { name: 'Log run' }));
+    const [run] = loadHistory();
+    expect(loadHistory()).toHaveLength(1);
+    expect(run).toMatchObject({ workoutName: 'Run', manual: true, completed: true, durationSec: 0 });
+    expect(new Date(run.startedAt).toDateString()).toBe(new Date().toDateString());
+    expect(todayDot().getAttribute('aria-label')).toMatch(/trained/);
+  });
+
+  it('shows a confirmation with Undo, and Undo takes the run back out', async () => {
+    const { user } = setupRun();
+    await user.click(screen.getByRole('button', { name: 'Log run' }));
+    expect(screen.getByText('Run logged')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(loadHistory()).toEqual([]);
+    expect(screen.queryByText('Run logged')).not.toBeInTheDocument();
+  });
+
+  it('ignores a double tap (one run, not two)', () => {
+    setupRun();
+    const btn = screen.getByRole('button', { name: 'Log run' });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    expect(loadHistory()).toHaveLength(1);
+  });
+
+  it('can log another run later the same day', async () => {
+    vi.useFakeTimers();
+    setupRun();
+    const btn = screen.getByRole('button', { name: 'Log run' });
+    fireEvent.click(btn);
+    act(() => {
+      vi.advanceTimersByTime(3_000);
+    });
+    fireEvent.click(btn);
+    expect(loadHistory()).toHaveLength(2);
+  });
+
+  it('the confirmation goes away by itself', () => {
+    vi.useFakeTimers();
+    setupRun();
+    fireEvent.click(screen.getByRole('button', { name: 'Log run' }));
+    expect(screen.getByText('Run logged')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(9_000);
+    });
+    expect(screen.queryByText('Run logged')).not.toBeInTheDocument();
+    expect(loadHistory()).toHaveLength(1); // the run stays logged
   });
 });
